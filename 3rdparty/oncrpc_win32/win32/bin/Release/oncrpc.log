@@ -1,0 +1,93 @@
+﻿C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VC\v170\Microsoft.Cpp.Analysis.props(24,5): warning MSB4211: The property "MsvcAnalysisPluginPath" is being set to a value for the first time, but it was already consumed at "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VC\v170\Microsoft.CodeAnalysis.Extensions.props (33,5)".
+  authunix.c
+  Auth_non.c
+  Auth_uni.c
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\Auth_uni.c(160,8): warning C4244: '=': conversion from 'time_t' to 'long', possible loss of data
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\Auth_uni.c(306,8): warning C4244: '=': conversion from 'time_t' to 'long', possible loss of data
+  bcopy.c
+  Bindresv.c
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\Bindresv.c(102,11): warning C4996: 'getpid': The POSIX name for this item is deprecated. Instead, use the ISO C and C++ conformant name: _getpid. See online help for details.
+  clnt_gen.c
+  Clnt_per.c
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\Clnt_per.c(110,9): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\Clnt_per.c(107,9): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\Clnt_per.c(132,20): warning C4996: '__sys_nerr': This function or variable may be unsafe. Consider using strerror instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\Clnt_per.c(134,11): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\Clnt_per.c(135,8): warning C4996: '__sys_errlist': This function or variable may be unsafe. Consider using strerror instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\Clnt_per.c(138,11): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\Clnt_per.c(144,10): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\Clnt_per.c(152,10): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\Clnt_per.c(155,11): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\Clnt_per.c(157,11): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\Clnt_per.c(165,10): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\Clnt_per.c(172,10): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\Clnt_per.c(178,9): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\Clnt_per.c(282,9): warning C4996: 'strcat': This function or variable may be unsafe. Consider using strcat_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\Clnt_per.c(285,10): warning C4996: 'strcat': This function or variable may be unsafe. Consider using strcat_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\Clnt_per.c(286,10): warning C4996: 'strcat': This function or variable may be unsafe. Consider using strcat_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\Clnt_per.c(291,10): warning C4996: 'strcat': This function or variable may be unsafe. Consider using strcat_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\Clnt_per.c(294,11): warning C4996: 'strcat': This function or variable may be unsafe. Consider using strcat_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\Clnt_per.c(305,9): warning C4996: 'strcat': This function or variable may be unsafe. Consider using strcat_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\Clnt_per.c(281,9): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\Clnt_per.c(301,11): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  clnt_raw.c
+  clnt_sim.c
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\clnt_sim.c(132,10): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  Clnt_tcp.c
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\Clnt_tcp.c(237,8): warning C4244: '=': conversion from 'time_t' to 'long', possible loss of data
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\Clnt_tcp.c(238,20): warning C4996: 'getpid': The POSIX name for this item is deprecated. Instead, use the ISO C and C++ conformant name: _getpid. See online help for details.
+  Clnt_udp.c
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\Clnt_udp.c(173,8): warning C4244: '=': conversion from 'time_t' to 'long', possible loss of data
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\Clnt_udp.c(191,20): warning C4996: 'getpid': The POSIX name for this item is deprecated. Instead, use the ISO C and C++ conformant name: _getpid. See online help for details.
+  Getrpcen.c
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\Getrpcen.c(108,13): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\Getrpcen.c(142,36): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\Getrpcen.c(159,2): warning C4996: 'strncpy': This function or variable may be unsafe. Consider using strncpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\Getrpcen.c(225,3): warning C4996: 'strcpy': This function or variable may be unsafe. Consider using strcpy_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\Getrpcen.c(226,3): warning C4996: 'strcat': This function or variable may be unsafe. Consider using strcat_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\Getrpcen.c(224,35): warning C4996: 'getenv': This function or variable may be unsafe. Consider using _dupenv_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  Getrpcpo.c
+  Get_myad.c
+  nt.c
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\nt.c(66,5): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  Pmap_cln.c
+  pmap_get.c
+  pmap_gma.c
+  pmap_pr.c
+  pmap_pro.c
+  Generating Code...
+  Compiling...
+  Pmap_rmt.c
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\Pmap_rmt.c(313,8): warning C4244: '=': conversion from 'time_t' to 'long', possible loss of data
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\Pmap_rmt.c(314,21): warning C4996: 'getpid': The POSIX name for this item is deprecated. Instead, use the ISO C and C++ conformant name: _getpid. See online help for details.
+  portmap.c
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\portmap.c(93,12): warning C4101: 'pid': unreferenced local variable
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\portmap.c(93,17): warning C4101: 't': unreferenced local variable
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\portmap.c(449,6): warning C4033: 'callit' must return a value
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\portmap.c(451,6): warning C4033: 'callit' must return a value
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\portmap.c(452,21): warning C4244: '=': conversion from 'unsigned long' to 'u_short', possible loss of data
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\portmap.c(453,2): warning C4013: 'get_myaddress' undefined; assuming extern returning int
+  rpc_call.c
+  rpc_comm.c
+  rpc_prot.c
+  Svc.c
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\Svc.c(141,3): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  svc_auth.c
+  Svc_autu.c
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\Svc_autu.c(131,4): warning C4996: 'sprintf': This function or variable may be unsafe. Consider using sprintf_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  svc_raw.c
+  Svc_run.c
+  Svc_simp.c
+  Svc_tcp.c
+  Svc_udp.c
+  Xdr.c
+  Xdr_arra.c
+  xdr_floa.c
+  xdr_mem.c
+  Xdr_rec.c
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\Xdr_rec.c(445,8): warning C4996: 'lseek': The POSIX name for this item is deprecated. Instead, use the ISO C and C++ conformant name: _lseek. See online help for details.
+  Xdr_refe.c
+  xdr_stdi.c
+  Generating Code...
+C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\librpc\portmap.c(328): warning C4715: 'reg_service': not all control paths return a value
+  oncrpc.vcxproj -> C:\Users\jdbru\source\repos\simh\BlinkenBone\3rdparty\oncrpc_win32\win32\bin\Release\oncrpc.lib

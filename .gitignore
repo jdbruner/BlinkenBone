@@ -1,0 +1,49 @@
+#ignore thumbnails created by windows
+Thumbs.db
+#ignore Desktop Services Store created by OSX
+.DS_Store
+#Ignore files built by Visual Studio
+*.obj
+*.exe
+*.pdb
+*.user
+*.aps
+*.pch
+*.vspscc
+*_i.c
+*_p.c
+*.ncb
+*.suo
+*.tlb
+*.tlh
+*.bak
+*.cache
+*.ilk
+*.log
+[Bb]in
+[Dd]ebug*/
+!debug.h
+*.lib
+*.sbr
+*.bak
+*.save
+obj/
+[Rr]elease*/
+_ReSharper*/
+[Tt]est[Rr]esult*
+*.o
+*.class
+panelsim_all.jar
+*~
+*#
+# We don't want to ignore some generated files because we don't rebuild
+# some of them.
+**/rpcgen_*/*
+!**/rpcgen_win32/*
+!**/rpcgen_linux/makefile
+!**/rpcgen_java/build.xml
+**/[Bb]in-*/
+!3rdparty/**
+**/*.code-workspace
+**/.vscode/
+**/.vs/

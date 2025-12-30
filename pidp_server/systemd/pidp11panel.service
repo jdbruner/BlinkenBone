@@ -1,0 +1,17 @@
+[Unit]
+Description=PiDP11/70 panel server
+Wants=rpcbind.service
+After=rpcbind.service
+
+[Install]
+WantedBy=pidp11.service
+WantedBy=multi-user.target
+
+[Service]
+Type=simple
+ExecStart=/opt/pidp11/server11
+WorkingDirectory=/opt/pidp11
+User=pidp11
+Group=pidp11
+SupplementaryGroups=gpio
+LimitRTPRIO=99:99

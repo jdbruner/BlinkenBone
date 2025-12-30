@@ -1,0 +1,7 @@
+At present, creation and use of rpcgen on Windows is broken. The source in 3rdparty\oncrpc_win32 is ancient.
+MSBuild can be coaxed into building it (when configured not to warn about K&R-style function calls and
+unsafe stdio functions, along with some extra definitions). However, this old version doesn't support the
+'-N' option, which is required to process rpc_blinkenlight_api.x
+
+Therefore, the files in this directory are copies of what would be generated at build time on Linux in
+rpcgen_linux. If there is a change to the API (.x file), rerun rpcgen on Linux and copy the output here.

@@ -1,0 +1,133 @@
+	.TITLE	IDLE
+	.ASECT
+;
+; Simple idle loop
+;
+; R0 = pattern value
+; R1 = 0177570 (address of switch register)
+; R2 = counter used for clock divider
+; R3 = address of update handler
+; R4 = last value of switch register
+; R5 = available for update handler
+; SP = 01000
+;
+; Trap vectors:
+;   004 - cpu error (fatal)
+;   010 - illegal instruction (if RESET is executed in user mode)
+;   100 - line clock
+;
+; The clock divider is the value in bits 5..0 of the switch register,
+; plus 1 - so it can be configured between 1 and 64. However, the
+; minimum divider is 2 (i.e., 000 and 001 are treated the same).
+;
+; The pattern select is the value in bits 7..6
+;
+
+SPL6 = 300			; priority level 6
+SPL7 = 340			; priority level 7
+STACK = 1000			; stack grows downward from here
+PSW = 177776			; processor status word
+CSW = 177570			; console switch/display register
+CLK = 177546			; line clock register
+CLKIE = 100			; line clock interrupt enable
+
+; When started at 0, go to START
+	NOP
+	BR	START
+
+; Any trap through 4 is fatal
+. = 4
+	.WORD	FATAL
+	.WORD	SPL7
+
+; Illegal instruction (i.e., RESET) causes a restart at START
+	.WORD	START
+	.WORD	SPL7
+
+. = 40
+FATAL:	HALT
+	BR	FATAL
+
+; Clock interrupt vector
+. = 100
+	.WORD	CLKINT
+	.WORD	SPL6
+
+; Cold start (or restart after RESET in user mode)
+START:	MOV	#STACK, SP	; set up stack pointer
+	RESET			; RESET (will trap if in user mode)
+	MOV	#SPL7, @#PSW	; initialize PSW
+
+	MOV	#CSW, R1
+	CLR	-(SP)		; create trap frame on stack
+	JSR	PC, INIT	; initialize loop iteration
+IDLE:	WAIT			; wait for next clock interrupt
+	BR	IDLE
+
+;;; Clock interrupt handler
+
+; Return from interrupt
+RETURN:	MOV	#CLKIE, @#CLK	; enable interrupt, clear tick status
+	MOV	R0, (R1)	; update display register
+	RTI
+
+; Handle interrupt
+CLKINT:	SOB	R2, RETURN	; decrement counter and return if not zero
+	CMP	(R1), R4	; did switch register change?
+	BEQ	NEXT		; no, do next pattern update
+INIT:	MOV	(R1), R4	; current value of switch register
+	MOV	R4, R3		; compute update handler
+	ASH	#-5, R3
+	BIC	#^C <ENDTBL-TABLE-2>, R3
+	MOV	TABLE(R3), R3
+	MOV	(R3)+, R0	; initialize pattern
+	MOV	(R3)+, R5	; initialize pattern-specific secondary register
+NEXT:	MOV	R4, R2		; set count to low 6 bits of switch register + 1
+	BIC	#^C 77, R2
+	BNE	1$		; treat ^B000 as ^B001
+	INC	R2
+1$:	INC	R2
+	JMP	(R3)		; pattern update
+
+TABLE:	.WORD	PAT00
+	.WORD	PAT01
+	.WORD	PAT02
+	.WORD	PAT03
+ENDTBL:
+
+PAT00:	.WORD	177400
+	.WORD	0
+	ASL	R0		; shift left
+	ADC	R0		; end-around carry
+	BR	RETURN
+
+PAT01:	.WORD	177400
+	.WORD	0
+	MOV	R0, R5		; get LSB into carry
+	ASR	R5
+	ROR	R0		; rotate right, end-around carry
+	BR	RETURN
+
+PAT02:	.WORD	170017
+	.WORD	0
+	MOV	R0,-(SP)
+	ASLB	(SP)		; shift low byte, shifted out to carry
+	RORB	1(SP)		; rotate high byte and carry bit
+	ADC	(SP)		; propagate carry to lsb
+	MOV	(SP)+,R0
+	BR	RETURN
+
+PAT03:	.WORD	1
+	.WORD	1
+	ASH	R5, R0		; shift left (1) or right (-1)
+	BVS	2$		; if sign changed, it is now negative
+	BPL	1$		; sign didn't change - check if negative
+	BIC	#100000, R0	; negative - prevent sign extension
+	BR	RETURN
+1$:	BCC	RETURN		; positive - check if we've shifted out the LSB
+	ROL	R0		; put bit back in LSB
+2$:	NEG	R5		; reverse direction
+	BR	RETURN
+
+	.END	0
+
