@@ -21,6 +21,8 @@
  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+ 02-Jan-2026  JB    configurable knob rotation direction
+ 17-Oct-2025  JB    changes to use libgpiod instead of direct access to /dev/mem
  14-Aug-2019  OV    fix for Raspberry Pi 4's different pullup configuration
  01-Jul-2017  MH    remove INP_GPIO before OUT_GPIO and change knobValue
  01-Apr-2016  OV    almost perfect before VCF SE
@@ -57,6 +59,7 @@
 #define GPIO_NUM    0
 
 extern int knobValue[2];	// value for knobs. 0=ADDR, 1=DATA. see main.c.
+extern int knobIncrement;	// add this value to increment knob position
 void check_rotary_encoders(int switchscan);
 
 static unsigned ledrows[] = { 20, 21, 22, 23, 24, 25 };               	// LED rows
@@ -243,7 +246,7 @@ void check_rotary_encoders(int switchscan)
 			lastCode[i]=code[i];
 			switchscan = switchscan + (1<<((i*2)+8));
 //			printf("%d end of UP %d %d\n",i, switchscan, (1<<((i*2)+8)));
-			knobValue[i]++;	//bugfix 20181225
+			knobValue[i] += knobIncrement;
 
 		}
 		else if ((code[i]==3) && (lastCode[i]==2))
@@ -251,7 +254,7 @@ void check_rotary_encoders(int switchscan)
 			lastCode[i]=code[i];
 			switchscan = switchscan + (2<<((i*2)+8));
 //			printf("%d end of DOWN %d %d\n",i,switchscan, (2<<((i*2)+8)));
-			knobValue[i]--;	// bugfix 20181225
+			knobValue[i] -= knobIncrement;
 		}
 	}
 

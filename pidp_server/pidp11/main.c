@@ -20,6 +20,7 @@
  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+ 02-Jan-2026  JB    configurable knob rotation direction
  17-Oct-2025  JB    changes to use libgpiod instead of direct access to /dev/mem
  27-Dec-2018  SC/MH OV: added MH fix occasional blinking LEDs (LAMPTEST in the gpiopattern thread)
  03-Feb-2018  JH    fixed SUPER-USER-KERNEL encoding
@@ -87,14 +88,28 @@ int opt_background = 0;
 int panel_lock = 0; // Default to panel unlocked
 int pwrDebounce=0;
 
-int knobValue[2] =
-{ 1, 1 }; // default start value for knobs. 0=ADDR[1=CONS_PHY], 1=DATA[1=DATA_PATHS] match Panelsim
+/* default start value for knobs (match Panelsim)
+ *    knobValue[0]	knobValue[1]
+ *    0 = Prog Phy	0 = Bus Reg
+ *    1 = Cons Phy	1 = Data Paths
+ *    2 = Kernel D	2 = uADR CPU FPU
+ *    3 = Super D	3 = Display Register
+ *    4 = User D
+ *    5 = User I
+ *    6 = Super I
+ *    7 = Kernel I
+ */
+int knobValue[2] = { 1, 1 }; // Cons Phy , Data Paths
 
-int knobAddrMap[8] = // Map rotary positioner to ADDR SELECT pseudo switches
-{ 7, 4, 6, 3, 1, 0, 2, 5 };
+// add this to knobValue[*] to increment position
+// (invert this to -1 if knobs rotate backwards)
+int knobIncrement = 1;
 
-int knobDataMap[4] = // Map rotary positioner to DATA SELECT pseudo switches
-{ 3, 2, 0, 1 };
+// Map rotary positioner to ADDR SELECT pseudo switches
+int knobAddrMap[8] = { 7, 4, 6, 3, 1, 0, 2, 5 };
+
+// Map rotary positioner to DATA SELECT pseudo switches
+int knobDataMap[4] = { 3, 2, 0, 1 };
 
 /*
  *	PiDP11 controls which are accessible over Blinkenlight API
@@ -410,7 +425,7 @@ static void help(void)
     fprintf(stderr, "  (compiled " __DATE__ " " __TIME__ ")\n");
     fprintf(stderr, "\n");
     fprintf(stderr, "Usage:\n");
-    fprintf(stderr, "  %s [-h] [-b] [-v] [-t] [-L] [-a 0..7] [-d 0..3] [-s <n>]\n", program_name);
+    fprintf(stderr, "  %s [-h] [-b] [-v] [-t] [-L] [-a 0..7] [-d 0..3] [-r] [-s <n>]\n", program_name);
     fprintf(stderr, "\n");
     fprintf(stderr, "  -h          display this help and exit\n");
     fprintf(stderr, "  -b          background operation: print to syslog (view with dmesg)\n");
@@ -425,6 +440,7 @@ static void help(void)
     fprintf(stderr, "  -d 0..3     starting position of the DATA SELECT knob\n");
     fprintf(stderr, "                clockwise from 0=BUS REG .. 3=DISPLAY REGISTER\n");
     fprintf(stderr, "                default is -d%d\n", knobValue[0]);
+    fprintf(stderr, "  -r          reverse knob rotation direction\n");
     fprintf(stderr, "  -s <n>      refresh value for panel updates: use with caution\n");
     fprintf(stderr, "                default is -s%ld\n", gpiopattern_update_period_us);
     fprintf(stderr, "\n");
@@ -449,7 +465,7 @@ static int parse_commandline(int argc, char **argv)
 
     opterr = 0;
 
-    while ((c = getopt(argc, argv, "hbvtLa:d:s:")) != -1)
+    while ((c = getopt(argc, argv, "hbvtLra:d:s:")) != -1)
         switch (c) {
         case 'h':
             help();
@@ -471,6 +487,9 @@ static int parse_commandline(int argc, char **argv)
             break;
         case 'd':
             knobValue[1] = *optarg & 0x3;
+            break;
+        case 'r':
+            knobIncrement = -1;
             break;
         case 's':
             { char *eos; gpiopattern_update_period_us = strtol(optarg, &eos, 10); }
