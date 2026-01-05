@@ -447,7 +447,29 @@ static void help(void)
 }
 
 /*
- * read commandline paramaters into global vars
+ * read environment variable parameters into global vars
+ * erroneous values are ignored
+ */
+static void parse_environment(void)
+{
+    char *cp;
+    int i;
+
+    // address and data select knob rotation direction
+    if ((cp = getenv("PIDP_11_ROTATION")) != NULL && !strcmp(cp, "FLIP"))
+        knobIncrement = -1;
+    
+    // initial position of address select knob
+    if ((cp = getenv("PIDP_11_KNOB_ADDR")) != NULL && (i = atoi(cp)) >= 0 && i < 8)
+        knobValue[0] = i;
+    
+    // initial position of data select knob
+    if ((cp = getenv("PIDP_11_KNOB_DATA")) != NULL && (i = atoi(cp)) >= 0 && i < 4)
+        knobValue[1] = i;
+}
+
+/*
+ * read commandline parameters into global vars
  * result: 1 = OK, 0 = error
  */
 static int parse_commandline(int argc, char **argv)
@@ -697,6 +719,7 @@ int main(int argc, char *argv[])
     int i;
 
     print_level = LOG_NOTICE;
+    parse_environment();
     if (!parse_commandline(argc, argv)) {
         help();
         return 1;
