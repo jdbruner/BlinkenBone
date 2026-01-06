@@ -80,7 +80,7 @@ main(int argc, const char *const *argv)
             break;
 
         default:
-            fprintf(stderr, "%s: unknown argument \"%c\"\n", c);
+            fprintf(stderr, "%s: unknown argument \"%c\"\n", argv0, c);
             // fall through
         case '?':
             fprintf(stderr, "Usage: \"%s [-0] [-d[N]|-o[N]|-x[N]] [-nN]\"\n", argv0);
