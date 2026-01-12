@@ -1,9 +1,4 @@
 #
-# Default target
-#
-all:    getcsw
-
-#
 # This makefile is derived from the makefile for blinkenlight_test
 #
 
@@ -12,16 +7,11 @@ CC_DBG_FLAGS = -O2 -Wno-unused-result
 else
 CC_DBG_FLAGS = -ggdb3 -O0
 endif
+
 OS_CCDEFS =
-
-
-ifeq ($(MAKE_TARGET_ARCH),RPI)
-	OBJDIR=../../../BIN
-	OS_CCDEFS += $(CC_DBG_FLAGS) -I/usr/include/tirpc
-	LDFLAGS += -ltirpc
-else
-	$error("only supported on Raspberry Pi")
-endif
+OBJDIR=../../../BIN
+OS_CCDEFS += $(CC_DBG_FLAGS) -I/usr/include/tirpc
+LDFLAGS += -ltirpc
 
 CCDEFS= \
 	-DBLINKENLIGHT_CLIENT	\
@@ -60,6 +50,7 @@ BLINKENLIGHT_API_SOURCES.h = \
 	$(BLINKENLIGHT_COMMON_DIR)/mcout.h	\
 	$(BLINKENLIGHT_COMMON_DIR)/inputline.h
 
+all:    getcsw
 
 $(BLINKENLIGHT_API_SOURCES.c) $(BLINKENLIGHT_API_SOURCES.h):
 	# rpcgen

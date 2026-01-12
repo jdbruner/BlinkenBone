@@ -1,40 +1,19 @@
-# call with MAKE_TARGET_ARCH=X86 or =RPI
-
+# call with MAKE_TARGET_ARCH=RPI
+# if using libgpiod-dev v1, call with USE_LIBGPIOD_V1=1
 
 #
 # CC Command
 #
-
-# own settings
-OS_CCDEFS =
-ifeq ($(MAKE_CONFIGURATION),RELEASE)
-CC_DBG_FLAGS = -O3
-else
 CC_DBG_FLAGS = -ggdb3 -O0
-endif
-LDFLAGS = -pthread
+OS_CCDEFS=-I/usr/include/tirpc
+OBJDIR=../../../BIN
+LDFLAGS=-lrt -pthread -lgpiod -ltirpc
 
-	# all other cases: X86
-	OBJDIR=x86
-
-ifeq ($(MAKE_TARGET_ARCH),BEAGLEBONE)
-	#### !!! when cross compiling !!!!
-	# fuer beaglebone und angstrom stand alone toolchain
-	CC=arm-angstrom-linux-gnueabi-gcc -mthumb -march=armv7-a -std=c99 -U__STRICT_ANSI__ $(CC_DBG_FLAGS) $(OS_CCDEFS) -I.
-	OBJDIR=bin-beaglebone
-	SSHTARGET=root@beaglebone
-	LDFLAGS += -lrt
+ifneq (,$(USE_LIBGPIOD_V1))
+	GPIOSRC=gpio_v1.c
 else
-ifeq ($(MAKE_TARGET_ARCH),RPI)
-	# CC=arm-linux-gnueabihf-gcc -std=c99 -U__STRICT_ANSI__ $(CC_DBG_FLAGS) $(OS_CCDEFS) -I.
-	OBJDIR=bin-rpi
-	SSHTARGET=pi@raspberrypi
-	LDFLAGS += -lrt
+	GPIOSRC=gpio.c
 endif
-
-endif
-
-# Reference also the standard blinkenbone server in BLINKENLIGHT_SERVER_DIR
 
 CCDEFS= \
 	-DBLINKENLIGHT_SERVER	\
@@ -42,15 +21,12 @@ CCDEFS= \
 	-I$(BLINKENLIGHT_COMMON_DIR)	\
 	-I$(BLINKENLIGHT_API_DIR)	\
 	-I$(BLINKENLIGHT_API_DIR)/rpcgen_linux	\
-	-I$(BLINKENLIGHT_SERVER_DIR)	\
 	$(CC_DBG_FLAGS) $(OS_CCDEFS)
 
 
 BLINKENLIGHT_COMMON_DIR=../../common
 # sub dir for the API. is same level (= sibling) as server and client
 BLINKENLIGHT_API_DIR=../../blinkenlight_api
-# dir of standard server
-BLINKENLIGHT_SERVER_DIR=../../blinkenlight_server
 # *_svc, *_xdr and api.h sources must be created with rpcgen
 BLINKENLIGHT_API_SOURCES.c = \
 	$(BLINKENLIGHT_API_DIR)/blinkenlight_panels.c	\
@@ -72,6 +48,9 @@ BLINKENLIGHT_API_SOURCES.h = \
 	$(BLINKENLIGHT_COMMON_DIR)/mcout.h	\
 	$(BLINKENLIGHT_COMMON_DIR)/errno2txt.h
 
+TARGETS = $(OBJDIR)/server11 $(OBJDIR)/server8
+all:    $(TARGETS)
+
 $(BLINKENLIGHT_API_SOURCES.c) $(BLINKENLIGHT_API_SOURCES.h):
 	# rpcgen
 	make --directory=$(BLINKENLIGHT_API_DIR)/rpcgen_linux sources
@@ -80,45 +59,46 @@ $(BLINKENLIGHT_API_SOURCES.c) $(BLINKENLIGHT_API_SOURCES.h):
 #########################################################
 
 SOURCES.h = \
-	main.h	\
-	gpio.h	\
+	globals.h	\
 	gpiopattern.h	\
-	$(BLINKENLIGHT_SERVER_DIR)/print.h	\
+	print.h	\
 	$(BLINKENLIGHT_API_DIR)/blinkenlight_panels.h
 
-SOURCES.c = \
-	main.c	\
-	gpio.c	\
+COMMON_SOURCES.c = \
+	$(GPIOSRC) \
 	gpiopattern.c	\
-	$(BLINKENLIGHT_SERVER_DIR)/print.c	\
+	print.c	\
 	$(BLINKENLIGHT_API_SOURCES.c)
 
+SERVER11_SOURCES.c = server11.c $(COMMON_SOURCES.c)
+
+SERVER8_SOURCES.c = server8.c $(COMMON_SOURCES.c)
+
+SOURCES.c = server11.c server8.c $(COMMON_SOURCES.c)
 
 OBJECTS = $(SOURCES.c:%.c=%.o)
-#
-# Build everything
-#
-all:    pidp8_blinkenlightd
 
+#
+# Build everything (target 'all' is above)
+#
 clean:
-	rm -f core pidp8_blinkenlightd $(OBJECTS) $(OBJDIR)/pidp8_blinkenlightd
+	rm -f core $(OBJECTS) $(TARGETS)
 	make --directory=$(BLINKENLIGHT_API_DIR)/rpcgen_linux clean
 
 install:
-	echo "copy server to beaglebone/rpi ... call only for ARM server!"
+	# no-op for now
+	# eventually this should copy the binaries and set the capabilities for the panel server
+
+$(OBJDIR)/server11:	$(SERVER11_SOURCES.c) $(SOURCES.h)
 ifneq ($(MAKE_TARGET_ARCH),RPI)
-	echo --- set remote time
-	ssh $(SSHTARGET) "date -u `date -u +%m%d%H%M%Y.%S`; echo `cat /etc/timezone` > /etc/timezone"
+	$(error PiDP11 server only builds for MAKE_TARGET_ARCH=RPI)
 endif
-	echo copy module ...
-	scp $(OBJDIR)/pidp8_blinkenlightd $(SSHTARGET):
+	${CC} -o $@ $(CCDEFS) $^ ${LDFLAGS}
+	file $@
 
-
-pidp8_blinkenlightd:	$(SOURCES.c) $(SOURCES.h)
-	# printenv | sort >env.make
-	${CC} $^ -o $@ $(CCDEFS) ${LDFLAGS}
-	mkdir -p $(OBJDIR)
-	mv $@ $(OBJDIR)
-	# Verify: was it x86 or ARM?
-	file $(OBJDIR)/$@
-
+$(OBJDIR)/server8:	$(SERVER8_SOURCES.c) $(SOURCES.h)
+ifneq ($(MAKE_TARGET_ARCH),RPI)
+	$(error PiDP9 server only builds for MAKE_TARGET_ARCH=RPI)
+endif
+	${CC} -o $@ $(CCDEFS) $^ ${LDFLAGS}
+	file $@

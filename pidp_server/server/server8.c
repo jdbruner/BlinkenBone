@@ -21,6 +21,7 @@
  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
+ 06-Jan-2026  JB    changes to use libgpiod instead of direct access to /dev/mem
  22-Mar-2016  JH    allow a control value to be distributed over several hw registers
  15-Mar-2016  JH	V 1.3 Low-pass for SimH output, display patterns for brightness levels
  09-Mar-2016  JH	V 1.2 inverted "Deposit" switch
@@ -52,10 +53,7 @@
 
  */
 
-#define MAIN_C_
-
-#define VERSION	"v1.3.0"
-
+#define _GNU_SOURCE     // for asprintf
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -63,6 +61,10 @@
 #include <ctype.h>
 #include <errno.h>
 #include <pthread.h>
+#include <inttypes.h> 
+#include <unistd.h>
+#include <signal.h>
+#include <assert.h>
 
 #include "blinkenlight_panels.h"
 #include "blinkenlight_api_server_procs.h"
@@ -77,15 +79,28 @@
 #include "bitcalc.h"
 #include "print.h"
 
-#include "main.h"
-#include "gpio.h"
+#include "globals.h"
 #include "gpiopattern.h"
 
-char program_info[1024];
-char program_name[1024]; // argv[0]
-char program_options[1024]; // argv[1.argc-1]
+const char SERVERNAME[] = "pidp8panel";
+const char VERSION[] = "2.0.0";
+char *program_info = NULL;
+const char *program_name = NULL;   // argv[0]
+char *program_options = NULL;      // argv[1..argc]
+
 int opt_test = 0;
 int opt_background = 0;
+
+/*
+ * GPIO row and column definitions
+ */
+#define _countof(x) (sizeof x / sizeof x[0])
+const unsigned ledrows[] = { 20, 21, 22, 23, 24, 25, 26, 27 };           // LED rows
+const unsigned num_ledrows = _countof(ledrows);                          // number of LED rows
+const unsigned rows[] = { 16, 17, 18 };                                  // switch rows
+const unsigned num_rows = _countof(rows);                                // number of switch rows
+const unsigned cols[] = { 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 15, 14 };    // columns
+const unsigned num_cols = _countof(cols);                                // number of columns
 
 /*
  *	PiDP8 controls wich are accessible over Blinkenlight API
@@ -237,12 +252,13 @@ static char *on_blinkenlight_api_get_info()
  * Start the parallel thread which operates the GPIO mux.
  */
 void *blink(void *ptr); // the real-time GPIO multiplexing process to start up
-void *gpiopattern_update_leds(void *ptr); // the averaging thread
 
 pthread_t blink_thread;
-int blink_thread_terminate = 0;
+_Atomic int blink_thread_terminate = 0;
 pthread_t gpiopattern_thread;
-int gpiopattern_thread_terminate = 0;
+_Atomic int gpiopattern_thread_terminate = 0;
+// blinkenlight_api_server runs on the main thread
+_Atomic int blinkenlight_thread_terminate = 0;
 
 static void gpio_mux_thread_start()
 {
@@ -361,12 +377,12 @@ void info(void)
 static void help(void)
 {
     fprintf(stderr, "\n");
-    fprintf(stderr, "pidp8_blinkenlightd %s - Blinkenlight RPC server for PiDP8 \n",
-    VERSION);
+    fprintf(stderr, "%s %s - Blinkenlight RPC server for PiDP8 \n",
+    program_name, VERSION);
     fprintf(stderr, "  (compiled " __DATE__ " " __TIME__ ")\n");
     fprintf(stderr, "\n");
     fprintf(stderr, "Call:\n");
-    fprintf(stderr, "pidp8_blinkenlightd [-b] [-v] [-t]\n");
+    fprintf(stderr, "%s [-b] [-v] [-t]\n", program_name);
     fprintf(stderr, "\n");
 //	fprintf(stderr, "- <port>:               TCP port for RCP access.\n") ;
     fprintf(stderr, "-b               : background operation: print to syslog (view with dmesg)\n");
@@ -382,15 +398,24 @@ static void help(void)
  */
 static int parse_commandline(int argc, char **argv)
 {
-    int i;
-    int c;
+    int i, c;
+    size_t program_options_size;
 
-    strcpy(program_name, argv[0]);
-    strcpy(program_options, "");
-    for (i = 1; i < argc; i++) {
-        if (i > 1)
-            strcat(program_options, " ");
-        strcat(program_options, argv[i]);
+    program_name = argv[0];
+    program_options_size = 0;
+    for (i = 1; i < argc; i++)
+        program_options_size += strlen(argv[i]) + 1;
+    if ((program_options = malloc(program_options_size)) != NULL) {
+        char *cp = program_options;
+        *cp = '\0';
+        for (i = 1; i < argc; i++) {
+            cp = stpcpy(cp, argv[i]);
+            if (i < argc-1)
+                *cp++ = ' ';
+        }  
+    } else {
+        perror("malloc");
+        program_options = "** error **";
     }
 
     opterr = 0;
@@ -564,19 +589,55 @@ static void register_controls()
 }
 
 /*
+ * No special handling required for LEDs on the PiDP8
+ */
+int
+led_fixup(blinkenlight_panel_t *p, blinkenlight_control_t *c, int *panel_mode_ptr,
+		uint32_t value, _Atomic uint32_t *gpio_ledstatus)
+{
+    return 0;
+}
+
+/*
+ * No special handling required for switches on the PiDP8
+ */
+void
+switch_fixup(int row, int switchscan)
+{
+}
+
+/*
+ * Termination signal handler - set terminate flags for worker threads.
+ */
+void
+kill_handler(int signum)
+{
+    blink_thread_terminate = 1;
+    gpiopattern_thread_terminate = 1;
+    blinkenlight_thread_terminate = 1;
+}
+
+/*
  *
  */
 int main(int argc, char *argv[])
 {
+    const int killsignals[] = { SIGHUP, SIGINT, SIGQUIT, SIGTERM };
+    int i;
+
+    assert(num_ledrows <= GPIOPATTERN_MAX_LED_ROWS);
+    assert(num_rows <= GPIOPATTERN_MAX_SWITCH_ROWS);
 
     print_level = LOG_NOTICE;
-    // print_level = LOG_DEBUG;
     if (!parse_commandline(argc, argv)) {
         help();
         return 1;
     }
-    sprintf(program_info, "pidp8_blinkenlightd - Blinkenlight API server daemon for PiDP8 %s",
-    VERSION);
+
+    if (asprintf(&program_info,
+        "%s - Blinkenlight API server daemon for PiDP8 %s",
+        SERVERNAME, VERSION) < 0)
+        return 1;
 
     info();
 
@@ -609,20 +670,23 @@ int main(int argc, char *argv[])
     gpio_mux_thread_start();
     gpiopattern_start_thread();
 
-    /** /
-     {
-     int i, j;
-     //		for (j = 0; j < 100000000; j++)
-     for (i = 0; i < 8; i++)
-     gpio_ledstatus[i] = 0x11111111;
-     //		return 0;
-     }
-     /**/
+
+    // catch non-ignored HUP, INT, QUIT, TERM signals
+    // and terminate all threads cleanly
+    for (i = 0; i < sizeof killsignals / sizeof *killsignals; i++) {
+            const struct sigaction kill_action = { .sa_handler = kill_handler, .sa_flags = SA_RESETHAND };
+            struct sigaction old_action;
+
+            if (sigaction(killsignals[i], NULL, &old_action) == 0 &&
+            old_action.sa_handler != SIG_IGN)
+                sigaction(killsignals[i], &kill_action, NULL);
+    }
 
     blinkenlight_api_server();
-    // does never end!
 
-    print_close(); // well ....
+    // wait for mux and pattern threads to finish
+    pthread_join(blink_thread, NULL);
+    pthread_join(gpiopattern_thread, NULL);
 
     blinkenlight_panels_destructor(blinkenlight_panel_list);
 

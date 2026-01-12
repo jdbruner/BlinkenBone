@@ -40,6 +40,12 @@
 extern long gpiopattern_update_period_us;
 #define GPIOPATTERN_UPDATE_PERIOD_US 50000  // 1/20 sec for screen update
 
+// Maximum number of switch rows allowed
+#define GPIOPATTERN_MAX_SWITCH_ROWS 3
+
+// Maximum number of LED rows allowed
+#define GPIOPATTERN_MAX_LED_ROWS 8
+
 // LED brightness levels (not changeable without code rework)
 // For N brightness levels there are N-1 display phases
 #define GPIOPATTERN_LED_BRIGHTNESS_LEVELS	32
@@ -50,8 +56,8 @@ extern blinkenlight_panel_t *gpiopattern_blinkenlight_panel;
 // bitfields:
 //   3 rows of up to 12 switches
 //   8 ledrows of double-buffered patterns of up to 12 LEDs
-extern _Atomic uint32_t gpio_switchstatus[3]; 
-extern _Atomic uint32_t gpiopattern_ledstatus_phases[2][GPIOPATTERN_LED_BRIGHTNESS_PHASES][8];
+extern _Atomic uint32_t gpio_switchstatus[GPIOPATTERN_MAX_SWITCH_ROWS]; 
+extern _Atomic uint32_t gpiopattern_ledstatus_phases[2][GPIOPATTERN_LED_BRIGHTNESS_PHASES][GPIOPATTERN_MAX_LED_ROWS];
 
 // phase indicies for double-buffering:
 //  read index: used by GPIO mux

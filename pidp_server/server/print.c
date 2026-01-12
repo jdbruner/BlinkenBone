@@ -22,6 +22,7 @@
 
 
    10-Feb-2012  JH      created
+   06-Jan-2026  JB      refactored into pidp_server, Windows support removed
 */
 
 
@@ -30,12 +31,8 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
-#ifdef WIN32
-#include <windows.h>	// struct timeval
-#else
 #include <syslog.h>
 #include <sys/time.h>
-#endif
 #include <time.h>
 
 #include "print.h"
@@ -46,21 +43,17 @@ static int print_syslog = 0; // 1, wenn nach syslog geschrieben wird. Sonst stde
 
 void print_open(int use_syslog)
 {
-#ifndef WIN32
 	print_syslog = use_syslog;
 	if (print_syslog) {
 		openlog("blinkenlightd", LOG_CONS, LOG_USER);
 	}
-#endif
 }
 
 void print_close(void)
 {
-#ifndef WIN32
 	if (print_syslog) {
 		closelog();
 	}
-#endif
 }
 
 /*
@@ -74,12 +67,9 @@ void print(int level, const char* format, ...)
 	char buffer[256];
 	va_start(argptr, format);
 	if (level <= print_level) {
-#ifndef WIN32
 		if (print_syslog) {
 			vsyslog(level, format, argptr);
-		} else
-#endif
-		{
+		} else {
 			gettimeofday(&tv, NULL );
 			tm = gmtime(&(tv.tv_sec));
 			// print with 10th of secs

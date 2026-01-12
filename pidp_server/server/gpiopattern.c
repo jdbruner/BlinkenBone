@@ -1,6 +1,7 @@
 /* gpiopattern.c: pattern generator, transforms data between Blinkenlight APi and gpio-MUX
 
  Copyright (c) 2016, Joerg Hoppe
+ Copyright (c) 2026, John D. Bruner
  j_hoppe@t-online.de, www.retrocmp.com
 
  Permission is hereby granted, free of charge, to any person obtaining a
@@ -20,6 +21,7 @@
  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+ 06-Jan-2026  JB    factor out panel-specific logic
  22-Jun-2025  JB    use atomics to avoid races
  05-Jul-2017  MH    added a variable for GPIOPATTERN_UPDATE_PERIOD_US
  08-May-2016  JH    fix: MMR0 converted code -> led pattern BEFORE history/low pass
@@ -91,6 +93,7 @@
 #include <assert.h>
 #include "bitcalc.h"
 #include "rpc_blinkenlight_api.h"
+#include "globals.h"
 #include "gpiopattern.h"
 
 // single mutex protecting double-buffer index swap
@@ -105,18 +108,16 @@ blinkenlight_panel_t *gpiopattern_blinkenlight_panel = NULL;
 
 long gpiopattern_update_period_us = GPIOPATTERN_UPDATE_PERIOD_US;
 
-extern int knobValue[2];
-
-_Atomic uint32_t gpio_switchstatus[3] = { 0 }; // bitfields: 3 rows of up to 12 switches
+// bitfields: 3 rows of up to 12 switches
+_Atomic uint32_t gpio_switchstatus[GPIOPATTERN_MAX_SWITCH_ROWS] = { 0 }; 
 
 /*
  * gpiopattern_ledstatus_phases[doublebufferidx][brightness_phases][gpiobank]
  * 1st index: 2 buffers
  * 2nd index: 32 brightness levels, and this much pattern phases
  * 3rd index: original Oscars's gpio bank
- *
  */
-_Atomic uint32_t gpiopattern_ledstatus_phases[2][GPIOPATTERN_LED_BRIGHTNESS_PHASES][8];
+_Atomic uint32_t gpiopattern_ledstatus_phases[2][GPIOPATTERN_LED_BRIGHTNESS_PHASES][GPIOPATTERN_MAX_LED_ROWS];
 
 /*
  * Table for bitvalues for different display phases and a given brigthness level.
@@ -163,143 +164,23 @@ static char brightness_phase_lookup[GPIOPATTERN_LED_BRIGHTNESS_LEVELS][GPIOPATTE
   { 1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,1,0,1,1,1,1 }  // 28/31 = 90%
 };
 
-/* Write a control value into one of the gpio_ledstatus[8]
+/* Write a control value into one of the gpio_ledstatus[]
  * control value maybe a pattern for a brightness phase of the value
  */
 static void value2gpio_ledstatus_value(blinkenlight_panel_t *p, blinkenlight_control_t *c,
-		uint32_t value, _Atomic uint32_t *gpio_ledstatus)
+	uint32_t value, _Atomic uint32_t *gpio_ledstatus)
 {
     unsigned i_register_wiring;
-    extern blinkenlight_control_t * leds_MMR0_MODE ;
-    extern blinkenlight_control_t * switch_LAMPTEST ;
-
-//-----------------------------------------------------------------------
-    extern blinkenlight_control_t * leds_ADDR_SELECT ;
-    extern blinkenlight_control_t * leds_DATA_SELECT ;
-//-----------------------------------------------------------------------
-
     int panel_mode = p->mode ;
 
-    // local LAMPTEST overrides mode set over API
-    if (!switch_LAMPTEST->value)				// prototype has lamptest inverted
-        panel_mode = RPC_PARAM_VALUE_PANEL_MODE_LAMPTEST ;
+    // panel-specific LED value conversion, returns 1 if handled
+    if (led_fixup(p, c, &panel_mode, value, gpio_ledstatus))
+        return;
 
-
-//-----------------------------------------------------------------------
-    if (c == leds_ADDR_SELECT) {
-        // circumvent wiring defintions, hard coded logic here:
-        // val:   UD  SD  KD CPHY     UI  SI  KI PPHY
-        // leds: 4.6 4.7 4.8 4.9     5.5 5.6 5.7 5.8
-#define REGMASK_LED_USER_D 0x40
-#define REGMASK_LED_SUPER_D 0x80
-#define REGMASK_LED_KERNEL_D 0x100
-#define REGMASK_LED_CONS_PHY 0x200
-#define REGMASK_ADDR_ALL4 0x3C0
-
-#define REGMASK_LED_USER_I 0x40
-#define REGMASK_LED_SUPER_I 0x80
-#define REGMASK_LED_KERNEL_I 0x100
-#define REGMASK_LED_PROG_PHY 0x200
-#define REGMASK_ADDR_ALL5 0x3C0
-
-        int mask4 = 0;
-        int mask5 = 0;
-        switch (panel_mode) {
-        case RPC_PARAM_VALUE_PANEL_MODE_NORMAL:
-            switch(knobValue[0]) {
-            case 0: mask5 |= REGMASK_LED_PROG_PHY; break ;
-            case 1: mask4 |= REGMASK_LED_CONS_PHY; break ;
-            case 2: mask4 |= REGMASK_LED_KERNEL_D; break ;
-            case 3: mask4 |= REGMASK_LED_SUPER_D ; break ;
-            case 4: mask4 |= REGMASK_LED_USER_D ; break ;
-            case 5: mask5 |= REGMASK_LED_USER_I ; break ;
-            case 6: mask5 |= REGMASK_LED_SUPER_I ; break ;
-            case 7: mask5 |= REGMASK_LED_KERNEL_I; break ;
-            }
-		    break;
-	
-        case RPC_PARAM_VALUE_PANEL_MODE_LAMPTEST:
-        case RPC_PARAM_VALUE_PANEL_MODE_ALLTEST:
-            mask4 = REGMASK_ADDR_ALL4 ; // all ON
-            mask5 = REGMASK_ADDR_ALL5 ; // all ON
-            break;
-
-
-        case RPC_PARAM_VALUE_PANEL_MODE_POWERLESS:
-            mask4 = 0 ; // all off
-		    mask5 =0;
-            break;
-        }
-        // mask all out and set selective
-        gpio_ledstatus[4] = (gpio_ledstatus[4] & ~REGMASK_ADDR_ALL4) | mask4 ;
-        gpio_ledstatus[5] = (gpio_ledstatus[5] & ~REGMASK_ADDR_ALL5) | mask5 ;
-
-        return ;
-    }
-	
-//-------------------------------------------------------------------------
-//-----------------------------------------------------------------------
-    if (c == leds_DATA_SELECT) {
-        // circumvent wiring defintions, hard coded logic here:
-        // val:   DP  BR   uAD DR
-        // leds: 4.10 4.11 5.10 5.11
-#define REGMASK_LED_DATA_PATHS 0x400
-#define REGMASK_LED_BUS_REG 0x800
-#define REGMASK_DATA_ALL4 0xC00
-
-#define REGMASK_LED_UADR 0x400
-#define REGMASK_LED_DISREG 0x800
-#define REGMASK_DATA_ALL5 0xC00
-
-        int mask4 = 0;
-        int mask5 = 0;
-        switch (panel_mode) {
-        case RPC_PARAM_VALUE_PANEL_MODE_NORMAL:
-            switch(knobValue[1]) {
-            	case 0:
-                case 4:
-                    mask4 |= REGMASK_LED_BUS_REG ;
-                    break ;
-                case 1:
-                case 5:
-                    mask4 |= REGMASK_LED_DATA_PATHS ;
-                    break ;
-                case 2:
-                case 6:
-                    mask5 |= REGMASK_LED_UADR;
-                    break ;
-                case 3: 
-                case 7:
-                    mask5 |= REGMASK_LED_DISREG;
-                    break ;
-            }
-		    break;
-	
-        case RPC_PARAM_VALUE_PANEL_MODE_LAMPTEST:
-        case RPC_PARAM_VALUE_PANEL_MODE_ALLTEST:
-            mask4 = REGMASK_DATA_ALL4 ; // all ON
-            mask5 = REGMASK_DATA_ALL5 ; // all ON
-            break;
-
-
-        case RPC_PARAM_VALUE_PANEL_MODE_POWERLESS:
-            mask4 = 0 ; // all off
-		    mask5 = 0;
-            break;
-        }
-        // mask all out and set selective
-        gpio_ledstatus[4] = (gpio_ledstatus[4] & ~REGMASK_DATA_ALL4) | mask4 ;
-        gpio_ledstatus[5] = (gpio_ledstatus[5] & ~REGMASK_DATA_ALL5) | mask5 ;
-
-        return ;
-    }
-	
-//-------------------------------------------------------------------------
-
+    // panel-independent value conversion
 	switch (panel_mode) {
 	case RPC_PARAM_VALUE_PANEL_MODE_NORMAL:
         if (c->mirrored_bit_order) {
-            printf(":");
             value = mirror_bits(value, c->value_bitlen);
         }
 		break;

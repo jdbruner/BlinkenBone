@@ -11,8 +11,3 @@ rem This can be built with VS2022, but MFC for x86 must be installed in Visual S
 pushd blinkenlight_test\msvc
 %MSBUILD%  blinkenlight_test.vcxproj
 popd
-
-rem The following has not yet been converted
-pushd blinkenlight_server\msvc
-%MSBUILD%  blinkenlightd.vcxproj
-popd

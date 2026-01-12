@@ -1,6 +1,6 @@
-/* gpio.c: the real-time process that handles multiplexing
+/* print.h: log file printer
 
-   Copyright (c) 2015-2016, Oscar Vermeulen & Joerg Hoppe
+   Copyright (c) 2012-2016, Joerg Hoppe
    j_hoppe@t-online.de, www.retrocmp.com
 
    Permission is hereby granted, free of charge, to any person obtaining a
@@ -21,48 +21,35 @@
    CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
-   16-Nov-2015  JH      created
+   10-Feb-2012  JH      created
+   06-Jan-2026  JB      refactored into pidp_server, Windows support removed
 */
 
-
-#ifndef _GPIO_H_
-#define _GPIO_H_
+#ifndef LOGGING_H_
+#define LOGGING_H_
 
 #include <stdio.h>
+#include <syslog.h>
+// use these message levels:
+// 	LOG_EMERG	system is unusable
+//	LOG_ALERT	action must be taken immediately
+//	LOG_CRIT	critical conditions
+// 	LOG_ERR		error conditions
+//	LOG_WARNING	warning conditions
+//	LOG_NOTICE	normal, but significant, condition
+//	LOG_INFO	informational message
+//	LOG_DEBUG	debug-level message
 
-#include <sys/mman.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-
-#include <unistd.h>
-#include <fcntl.h> // extra
-
-
-//#define BCM2708_PERI_BASE       0x3f000000
-//#define GPIO_BASE               (BCM2708_PERI_BASE + 0x200000)	// GPIO controller
-
-#define BLOCK_SIZE 		(4*1024)
-
-// IO Acces
-struct bcm2835_peripheral {
-    unsigned long addr_p;
-    int mem_fd;
-    void *map;
-    volatile unsigned int *addr;
-};
-
-
-#ifndef _GPIO_C_
-//extern volatile unsigned int gpio_switchstatus[3] ; // bitfields: 3 rows of up to 12 switches
-//extern volatile unsigned int gpio_ledstatus[8] ;	// bitfields: 8 ledrows of up to 12 LEDs
+#if !defined(LOGGING_C_)
+extern int print_level; // print call of remote procedures
 #endif
 
+/*
+ * Output into stderr or logfile
+ */
+void print_open(int use_syslog) ;
+void print(int level, const char* format, ...);
+void print_memdump(int level, char *info, unsigned start_addr, unsigned count, unsigned char *data) ;
+void print_close(void) ;
 
-//struct bcm2835_peripheral gpio = {GPIO_BASE};
-
-
-// thread main procedure
-//void *blink(int *terminate) ;
-// differnt type to use it for pthread_start
-
-#endif
+#endif /* LOGGING_H_ */

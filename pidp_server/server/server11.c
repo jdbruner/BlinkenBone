@@ -1,7 +1,9 @@
- /* main.c: Blinkenlight API server to run on "PiDP11" replica
+ /* server11.c: Blinkenlight API server to run on "PiDP11" replica
 
  Copyright (c) 2015-2016, Joerg Hoppe
+ Copyright (c) 2026, John D. Bruner
  j_hoppe@t-online.de, www.retrocmp.com
+ jdbruner@live.com
 
  Permission is hereby granted, free of charge, to any person obtaining a
  copy of this software and associated documentation files (the "Software"),
@@ -20,6 +22,7 @@
  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+ 06-Jan-2026  JB    refactored
  02-Jan-2026  JB    configurable knob rotation direction
  17-Oct-2025  JB    changes to use libgpiod instead of direct access to /dev/mem
  27-Dec-2018  SC/MH OV: added MH fix occasional blinking LEDs (LAMPTEST in the gpiopattern thread)
@@ -44,13 +47,9 @@
 
  Like the generic blinkenlightd,
  - PiDP11 controls are fix wired in, no config file
- - Hardware interface to Raspberry is "gpio11.c"
-
  */
 
-#define MAIN_C_
-
-
+#define _GNU_SOURCE     // for asprintf
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -61,6 +60,7 @@
 #include <inttypes.h> 
 #include <unistd.h>
 #include <signal.h>
+#include <assert.h>
 
 #include "blinkenlight_panels.h"
 #include "blinkenlight_api_server_procs.h"
@@ -75,18 +75,19 @@
 #include "bitcalc.h"
 #include "print.h"
 
-#include "main.h"
+#include "globals.h"
 #include "gpiopattern.h"
 
 const char SERVERNAME[] = "pidp11panel";
-const char VERSION[] = "1.4.1";
-char program_info[1024];
-char program_name[1024]; // argv[0]
-char program_options[1024]; // argv[1.argc-1]
+const char VERSION[] = "2.0.0";
+char *program_info = NULL;
+const char *program_name = NULL;   // argv[0]
+char *program_options = NULL;      // argv[1..argc]
+
 int opt_test = 0;
 int opt_background = 0;
 int panel_lock = 0; // Default to panel unlocked
-int pwrDebounce=0;
+int pwrDebounce = 0;
 
 /* default start value for knobs (match Panelsim)
  *    knobValue[0]	knobValue[1]
@@ -112,6 +113,17 @@ int knobAddrMap[8] = { 7, 4, 6, 3, 1, 0, 2, 5 };
 int knobDataMap[4] = { 3, 2, 0, 1 };
 
 /*
+ * GPIO row and column definitions
+ */
+#define _countof(x) (sizeof x / sizeof x[0])
+const unsigned ledrows[] = { 20, 21, 22, 23, 24, 25 };                   // LED rows
+const unsigned num_ledrows = _countof(ledrows);                          // number of LED rows
+const unsigned rows[] = { 16, 17, 18 };                                  // switch rows
+const unsigned num_rows = _countof(rows);                                // number of switch rows
+const unsigned cols[] = { 26, 27, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 };    // columns
+const unsigned num_cols = _countof(cols);                                // number of columns
+
+/*
  *	PiDP11 controls which are accessible over Blinkenlight API
  */
 blinkenlight_control_t *control_raw_switchstatus[2];
@@ -128,7 +140,6 @@ blinkenlight_control_t *leds_ADDRESS, *leds_DATA, *led_PARITY_HIGH, *led_PARITY_
         *led_ADRS_ERR, *led_RUN, *led_PAUSE, *led_MASTER, *leds_MMR0_MODE, *led_DATA_SPACE,
         *led_ADDRESSING_16, *led_ADDRESSING_18, *led_ADDRESSING_22, *leds_DATA_SELECT,
         *leds_ADDR_SELECT;
-
 
 /*
  *	RPC server callbacks:
@@ -291,15 +302,14 @@ static void on_blinkenlight_api_panel_set_mode(blinkenlight_panel_t *p, int new_
 
 static char *on_blinkenlight_api_get_info()
 {
-    static char buffer[1024];
-
-    sprintf(buffer, "Server info ...............: %s\n"
-            "Server program name........: %s\n"
-            "Server command line options: %s\n"
-            "Server compile time .......: " __DATE__ " " __TIME__ "\n", //
-            program_info, program_name, program_options);
-
-    return buffer;
+    char *info = NULL;
+    if (asprintf(&info, "Server info ...............: %s\n"
+        "Server program name........: %s\n"
+        "Server command line options: %s\n"
+        "Server compile time .......: " __DATE__ " " __TIME__ "\n",
+        program_info, program_name, program_options) < 0)
+        info = "Server info *unknown*\n";
+    return info;
 }
 
 /*
@@ -410,7 +420,7 @@ void info(void)
     print(LOG_INFO, "\n");
     print(LOG_NOTICE, "*** %s %s - server for PiDP11 ***\n", SERVERNAME, VERSION);
     print(LOG_NOTICE, "    Compiled " __DATE__ " " __TIME__ "\n");
-    print(LOG_NOTICE, "    Copyright (C) 2015-2016 Joerg Hoppe, Oscar Vermeulen.\n");
+    print(LOG_NOTICE, "    Copyright (C) 2015-2026 Joerg Hoppe, Oscar Vermeulen, John D. Bruner.\n");
     print(LOG_NOTICE, "    www.retrocmp.com, obsolescence.wix.com/obsolescence\n");
     print(LOG_NOTICE, "\n");
 }
@@ -474,17 +484,26 @@ static void parse_environment(void)
  */
 static int parse_commandline(int argc, char **argv)
 {
-    int i;
-    int c;
+    int i, c;
+    size_t program_options_size;
 
-    strcpy(program_name, argv[0]);
-    strcpy(program_options, "");
-    for (i = 1; i < argc; i++) {
-        if (i > 1)
-            strcat(program_options, " ");
-        strcat(program_options, argv[i]);
+    program_name = argv[0];
+    program_options_size = 0;
+    for (i = 1; i < argc; i++)
+        program_options_size += strlen(argv[i]) + 1;
+    if ((program_options = malloc(program_options_size)) != NULL) {
+        char *cp = program_options;
+        *cp = '\0';
+        for (i = 1; i < argc; i++) {
+            cp = stpcpy(cp, argv[i]);
+            if (i < argc-1)
+                *cp++ = ' ';
+        }  
+    } else {
+        perror("malloc");
+        program_options = "** error **";
     }
-
+    
     opterr = 0;
 
     while ((c = getopt(argc, argv, "hbvtLra:d:s:")) != -1)
@@ -699,6 +718,175 @@ static void register_controls()
     blinkenlight_panels_config_fixup(blinkenlight_panel_list);
 }
 
+int
+led_fixup(blinkenlight_panel_t *p, blinkenlight_control_t *c, int *panel_mode_ptr,
+		uint32_t value, _Atomic uint32_t *gpio_ledstatus)
+{
+    // PIDP11-specific handling of lamp test switch,
+    // address select knob, and data select knob
+    int panel_mode = p->mode;
+
+    // local LAMPTEST overrides mode set over API
+    if (!switch_LAMPTEST->value)				// prototype has lamptest inverted
+        panel_mode = RPC_PARAM_VALUE_PANEL_MODE_LAMPTEST ;   
+    if (panel_mode_ptr != NULL)
+        *panel_mode_ptr = panel_mode;
+
+    // address select - map knobValue[0] to LED values
+    if (c == leds_ADDR_SELECT) {
+        // circumvent wiring defintions, hard coded logic here:
+        // val:   UD  SD  KD CPHY     UI  SI  KI PPHY
+        // leds: 4.6 4.7 4.8 4.9     5.5 5.6 5.7 5.8
+#define REGMASK_LED_USER_D 0x40
+#define REGMASK_LED_SUPER_D 0x80
+#define REGMASK_LED_KERNEL_D 0x100
+#define REGMASK_LED_CONS_PHY 0x200
+#define REGMASK_ADDR_ALL4 0x3C0
+
+#define REGMASK_LED_USER_I 0x40
+#define REGMASK_LED_SUPER_I 0x80
+#define REGMASK_LED_KERNEL_I 0x100
+#define REGMASK_LED_PROG_PHY 0x200
+#define REGMASK_ADDR_ALL5 0x3C0
+
+        int mask4 = 0;
+        int mask5 = 0;
+        switch (panel_mode) {
+        case RPC_PARAM_VALUE_PANEL_MODE_NORMAL:
+            switch(knobValue[0]) {
+            case 0: mask5 |= REGMASK_LED_PROG_PHY; break ;
+            case 1: mask4 |= REGMASK_LED_CONS_PHY; break ;
+            case 2: mask4 |= REGMASK_LED_KERNEL_D; break ;
+            case 3: mask4 |= REGMASK_LED_SUPER_D ; break ;
+            case 4: mask4 |= REGMASK_LED_USER_D ; break ;
+            case 5: mask5 |= REGMASK_LED_USER_I ; break ;
+            case 6: mask5 |= REGMASK_LED_SUPER_I ; break ;
+            case 7: mask5 |= REGMASK_LED_KERNEL_I; break ;
+            }
+		    break;
+	
+        case RPC_PARAM_VALUE_PANEL_MODE_LAMPTEST:
+        case RPC_PARAM_VALUE_PANEL_MODE_ALLTEST:
+            mask4 = REGMASK_ADDR_ALL4 ; // all ON
+            mask5 = REGMASK_ADDR_ALL5 ; // all ON
+            break;
+
+
+        case RPC_PARAM_VALUE_PANEL_MODE_POWERLESS:
+            mask4 = 0 ; // all off
+		    mask5 =0;
+            break;
+        }
+        // mask all out and set selective
+        gpio_ledstatus[4] = (gpio_ledstatus[4] & ~REGMASK_ADDR_ALL4) | mask4 ;
+        gpio_ledstatus[5] = (gpio_ledstatus[5] & ~REGMASK_ADDR_ALL5) | mask5 ;
+
+        return 1;
+    }
+
+    // data select - map knobValue[1] to LED values
+    if (c == leds_DATA_SELECT) {
+        // circumvent wiring defintions, hard coded logic here:
+        // val:   DP  BR   uAD DR
+        // leds: 4.10 4.11 5.10 5.11
+#define REGMASK_LED_DATA_PATHS 0x400
+#define REGMASK_LED_BUS_REG 0x800
+#define REGMASK_DATA_ALL4 0xC00
+
+#define REGMASK_LED_UADR 0x400
+#define REGMASK_LED_DISREG 0x800
+#define REGMASK_DATA_ALL5 0xC00
+
+        int mask4 = 0;
+        int mask5 = 0;
+        switch (panel_mode) {
+        case RPC_PARAM_VALUE_PANEL_MODE_NORMAL:
+            switch(knobValue[1]) {
+            	case 0:
+                case 4:
+                    mask4 |= REGMASK_LED_BUS_REG ;
+                    break ;
+                case 1:
+                case 5:
+                    mask4 |= REGMASK_LED_DATA_PATHS ;
+                    break ;
+                case 2:
+                case 6:
+                    mask5 |= REGMASK_LED_UADR;
+                    break ;
+                case 3: 
+                case 7:
+                    mask5 |= REGMASK_LED_DISREG;
+                    break ;
+            }
+		    break;
+	
+        case RPC_PARAM_VALUE_PANEL_MODE_LAMPTEST:
+        case RPC_PARAM_VALUE_PANEL_MODE_ALLTEST:
+            mask4 = REGMASK_DATA_ALL4 ; // all ON
+            mask5 = REGMASK_DATA_ALL5 ; // all ON
+            break;
+
+
+        case RPC_PARAM_VALUE_PANEL_MODE_POWERLESS:
+            mask4 = 0 ; // all off
+		    mask5 = 0;
+            break;
+        }
+        // mask all out and set selective
+        gpio_ledstatus[4] = (gpio_ledstatus[4] & ~REGMASK_DATA_ALL4) | mask4 ;
+        gpio_ledstatus[5] = (gpio_ledstatus[5] & ~REGMASK_DATA_ALL5) | mask5 ;
+
+        return 1;
+    }
+
+    return 0;
+}
+
+void
+switch_fixup(int row, int switchscan)
+{
+    // Special handling for switch row 2 - rotary knobs
+    // 2 rotary encoders. Each has two switch pins. Normally, both are 0 - no rotation.
+    // encoder 1: row1, bits 8,9. Encoder 2: row1, bits 10,11
+    // Gray encoding: rotate up sequence   = 11 -> 01 -> 00 -> 10 -> 11
+    // Gray encoding: rotate down sequence = 11 -> 10 -> 00 -> 01 -> 11
+
+    static int lastCode[2] = { 3, 3 };
+    int code[2];
+    int i;
+
+    if (row != 2)
+        return;
+
+    code[0] = (switchscan & 0x300) >> 8;
+    code[1] = (switchscan & 0xC00) >> 10;
+    switchscan = switchscan & 0xff;	// set the 4 bits to zero
+
+    // detect rotation
+    for (i = 0; i < 2; i++) {
+        if ((code[i] == 1) && (lastCode[i] == 3))
+            lastCode[i] = code[i];
+        else if ((code[i] == 2) && (lastCode[i] == 3))
+            lastCode[i] = code[i];
+    }
+
+    // detect end of rotation
+    for (i = 0; i < 2; i++) {
+        if ((code[i] == 3) && (lastCode[i] == 1)) {
+            lastCode[i] = code[i];
+            knobValue[i] += knobIncrement;
+
+        } else if ((code[i] == 3) && (lastCode[i] == 2)) {
+            lastCode[i] = code[i];
+            knobValue[i] -= knobIncrement;
+        }
+    }
+
+    knobValue[0] = knobValue[0] & 7;
+    knobValue[1] = knobValue[1] & 3;
+}
+
 /*
  * Termination signal handler - set terminate flags for worker threads.
  */
@@ -711,12 +899,15 @@ kill_handler(int signum)
 }
 
 /*
- *
+ * Main program
  */
 int main(int argc, char *argv[])
 {
     const int killsignals[] = { SIGHUP, SIGINT, SIGQUIT, SIGTERM };
     int i;
+
+    assert(num_ledrows <= GPIOPATTERN_MAX_LED_ROWS);
+    assert(num_rows <= GPIOPATTERN_MAX_SWITCH_ROWS);
 
     print_level = LOG_NOTICE;
     parse_environment();
@@ -724,8 +915,12 @@ int main(int argc, char *argv[])
         help();
         return 1;
     }
-    sprintf(program_info, "%s - Blinkenlight API server daemon for PiDP11 %s",
-    	SERVERNAME, VERSION);
+
+
+    if (asprintf(&program_info,
+        "%s - Blinkenlight API server daemon for PiDP11 %s",
+        SERVERNAME, VERSION) < 0)
+        return 1;
 
     print(LOG_INFO, "Start\n");
 

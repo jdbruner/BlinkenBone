@@ -21,8 +21,6 @@
  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
- 02-Jan-2026  JB    configurable knob rotation direction
- 17-Oct-2025  JB    changes to use libgpiod instead of direct access to /dev/mem
  14-Aug-2019  OV    fix for Raspberry Pi 4's different pullup configuration
  01-Jul-2017  MH    remove INP_GPIO before OUT_GPIO and change knobValue
  01-Apr-2016  OV    almost perfect before VCF SE
@@ -31,6 +29,8 @@
  01-Sep-2023  JB	rewritten for libgpiod
  22-Jun-2025  JB    use atomics to avoid races
  15-Oct-2025  JB    rewritten for libgpiod v2 (breaking change)
+ 17-Oct-2025  JB    changes to use libgpiod instead of direct access to /dev/mem
+ 02-Jan-2026  JB    configurable knob rotation direction, refactor
 
  gpio.c from Oscar Vermeules PiDP8-sources.
  Slightest possible modification by Joerg.
@@ -41,6 +41,8 @@
  external variable gpiopattern_ledstatus_phases is read to determine which leds to light.
  external variable gpio_switchstatus is updated with current switch settings.
 
+ LED and switch rows and columns are defined by the main program, so this
+ code can be used for different emulated panels (PiDP11, PiDP9, etc.)
  */
 
 #include <time.h>
@@ -52,6 +54,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
+#include "globals.h"
 #include "gpiopattern.h"
 
 // invoke a function that returns a pointer
@@ -71,19 +74,7 @@
 // release/free item at pointer if non-NULL using specified function
 #define RELEASE(ptr, func) if (ptr != (void *)0) func(ptr)
 
-#define _countof(x) (sizeof x / sizeof x[0])
-
 static const char *GPIO_CHIP = "/dev/gpiochip0";
-static const char *argv0 = "server11";
-
-extern int knobValue[2];	// value for knobs. 0=ADDR, 1=DATA. see main.c.
-extern int knobIncrement;	// add this value to increment knob position
-void check_rotary_encoders(int switchscan);
-
-static const unsigned ledrows[] = { 20, 21, 22, 23, 24, 25 };               	// LED rows
-static const unsigned rows[] = { 16, 17, 18 };                               	// switch rows
-static const unsigned cols[] = { 26, 27, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 }; 	// columns
-
 static const useconds_t intervl = 50; // light each row of leds 50 us (almost flickerfree at 32 phases)
 
 void *
@@ -102,17 +93,20 @@ blink(void *terminate)
     struct gpiod_line_request *ledrow_request = NULL;
     struct gpiod_line_request *row_request = NULL;
     struct gpiod_line_request *col_request = NULL;
-    enum gpiod_line_value col_vals[_countof(cols)];
+    enum gpiod_line_value *col_vals = NULL;
     struct sched_param rtschedparam = { .sched_priority = 98 };
     int i, j, switchscan;
     void *exitstatus = (void *)-1;
+
+    // allocate col_vals
+    INVOKE_PTR(col_vals, malloc(num_cols * sizeof(enum gpiod_line_value)));
 
     // open the chip
     INVOKE_PTR(chip, gpiod_chip_open(GPIO_CHIP));
 
     // request configuration (with name of this program)
     INVOKE_PTR(request_config, gpiod_request_config_new());
-    gpiod_request_config_set_consumer(request_config, argv0);
+    gpiod_request_config_set_consumer(request_config, program_name);
 
     // tristate line settings (input with no pull)
     INVOKE_PTR(tristate_settings, gpiod_line_settings_new());
@@ -132,20 +126,20 @@ blink(void *terminate)
     // create configurations for LED rows (output with all lines inactive)
     INVOKE_PTR(ledrow_output_config, gpiod_line_config_new());
     INVOKE(gpiod_line_settings_set_output_value(output_settings, GPIOD_LINE_VALUE_INACTIVE));
-    INVOKE(gpiod_line_config_add_line_settings(ledrow_output_config, ledrows, _countof(ledrows), output_settings));
+    INVOKE(gpiod_line_config_add_line_settings(ledrow_output_config, ledrows, num_ledrows, output_settings));
 
     // create configurations for switch rows (tristate, output with all lines active)
     INVOKE_PTR(row_tristate_config, gpiod_line_config_new());
-    INVOKE(gpiod_line_config_add_line_settings(row_tristate_config, rows, _countof(rows), tristate_settings));
+    INVOKE(gpiod_line_config_add_line_settings(row_tristate_config, rows, num_rows, tristate_settings));
     INVOKE_PTR(row_output_config, gpiod_line_config_new());
     INVOKE(gpiod_line_settings_set_output_value(output_settings, GPIOD_LINE_VALUE_ACTIVE));
-    INVOKE(gpiod_line_config_add_line_settings(row_output_config, rows, _countof(rows), output_settings));
+    INVOKE(gpiod_line_config_add_line_settings(row_output_config, rows, num_rows, output_settings));
     
     // create configurations for columns (output with all lines active, input with pull up)
     INVOKE_PTR(col_output_config, gpiod_line_config_new());
-    INVOKE(gpiod_line_config_add_line_settings(col_output_config, cols, _countof(cols), output_settings));
+    INVOKE(gpiod_line_config_add_line_settings(col_output_config, cols, num_cols, output_settings));
     INVOKE_PTR(col_input_config, gpiod_line_config_new());
-    INVOKE(gpiod_line_config_add_line_settings(col_input_config, cols, _countof(cols), input_settings));
+    INVOKE(gpiod_line_config_add_line_settings(col_input_config, cols, num_cols, input_settings));
 
     // request the GPIO lines for the ledrows, rows, and cols
     INVOKE_PTR(ledrow_request, gpiod_chip_request_lines(chip, request_config, ledrow_output_config));
@@ -172,9 +166,9 @@ blink(void *terminate)
 
             // light up each row of LEDs
             // drive one LED row low for each set of columns
-            for (i = 0; i < _countof(ledrows); i++) {
+            for (i = 0; i < num_ledrows; i++) {
                 // light up the next row with the matching column values (inverted)
-                for (j = 0; j < _countof(cols); j++)
+                for (j = 0; j < num_cols; j++)
                     col_vals[j] = (gpio_ledstatus[i] & (1 << j)) ? GPIOD_LINE_VALUE_INACTIVE : GPIOD_LINE_VALUE_ACTIVE;
 
                 INVOKE(gpiod_line_request_set_values(col_request, col_vals));
@@ -192,17 +186,16 @@ blink(void *terminate)
             INVOKE(gpiod_line_request_reconfigure_lines(col_request, col_input_config));
 
             // enable each row and read the switches in that row
-            for (i = 0; i < _countof(rows); i++) {
+            for (i = 0; i < num_rows; i++) {
                 INVOKE(gpiod_line_request_set_value(row_request, rows[i], GPIOD_LINE_VALUE_INACTIVE));
                 usleep(1); // allow inputs to settle
                 INVOKE(gpiod_line_request_get_values(col_request, col_vals));
                 switchscan = 0;
-                for (j = 0; j < _countof(cols); j++)
+                for (j = 0; j < num_cols; j++)
                     switchscan |= (col_vals[j] == GPIOD_LINE_VALUE_ACTIVE) << j;
                 INVOKE(gpiod_line_request_set_value(row_request, rows[i], GPIOD_LINE_VALUE_ACTIVE));
 
-                if (i == 2)
-                    check_rotary_encoders(switchscan); // translate raw encoder data to switch position
+                switch_fixup(i, switchscan);
                 gpio_switchstatus[i] = switchscan;
             }
         }
@@ -232,54 +225,11 @@ out:
 
     RELEASE(chip, gpiod_chip_close);
 
+    RELEASE(col_vals, free);
+
     // if we are exiting due to an error, terminate the process
     if (exitstatus != NULL)
         exit(1);
 
     return exitstatus;
-}
-
-void
-check_rotary_encoders(int switchscan)
-{
-    // 2 rotary encoders. Each has two switch pins. Normally, both are 0 - no rotation.
-    // encoder 1: row1, bits 8,9. Encoder 2: row1, bits 10,11
-    // Gray encoding: rotate up sequence   = 11 -> 01 -> 00 -> 10 -> 11
-    // Gray encoding: rotate down sequence = 11 -> 10 -> 00 -> 01 -> 11
-
-    static int lastCode[2] = { 3, 3 };
-    int code[2];
-    int i;
-
-    code[0] = (switchscan & 0x300) >> 8;
-    code[1] = (switchscan & 0xC00) >> 10;
-    switchscan = switchscan & 0xff;	// set the 4 bits to zero
-
-    // detect rotation
-    for (i = 0; i < 2; i++) {
-        if ((code[i] == 1) && (lastCode[i] == 3))
-            lastCode[i] = code[i];
-        else if ((code[i] == 2) && (lastCode[i] == 3))
-            lastCode[i] = code[i];
-    }
-
-    // detect end of rotation
-    for (i = 0; i < 2; i++) {
-        if ((code[i] == 3) && (lastCode[i] == 1)) {
-            lastCode[i] = code[i];
-            switchscan = switchscan + (1 << ((i * 2) + 8));
-            knobValue[i] += knobIncrement;
-
-        } else if ((code[i] == 3) && (lastCode[i] == 2)) {
-            lastCode[i] = code[i];
-            switchscan = switchscan + (2 << ((i * 2) + 8));
-            knobValue[i] -= knobIncrement;
-        }
-    }
-
-    knobValue[0] = knobValue[0] & 7;
-    knobValue[1] = knobValue[1] & 3;
-
-    // end result: bits 8,9 are 00 normally, 01 if UP, 10 if DOWN. Same for bits 10,11 (knob 2)
-    // these bits are not used, actually. Status is communicated through global variable knobValue[i]
 }

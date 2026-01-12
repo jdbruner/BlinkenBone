@@ -1,6 +1,7 @@
-/* main.h: Blinkenlight API server to run on "PiDP8" replica
+/* globals.h: Global definitions for PiDP Blinkenlight API server
 
    Copyright (c) 2015-2016, Joerg Hoppe
+   Copyright (c) 2026, John D. Bruner
    j_hoppe@t-online.de, www.retrocmp.com
 
    Permission is hereby granted, free of charge, to any person obtaining a
@@ -20,32 +21,35 @@
    IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
    CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-
+   06-Jan-2026  JB      refactored
    13-Nov-2015  JH      created
 */
 
 
-#ifndef MAIN_H_
-#define MAIN_H_
+#ifndef GLOBALS_H_
+#define GLOBALS_H_
 
 #include "blinkenlight_panels.h"
 
-#define MAX_FILENAME_LEN	1024
-
-#ifndef MAIN_C_
 // global panel config
-extern blinkenlight_panel_list_t *blinkenlight_panel_list ;
+extern blinkenlight_panel_list_t *blinkenlight_panel_list;
 
-extern char configfilename[MAX_FILENAME_LEN];
-// global flags
-extern int mode_test; // no server, just test config
-extern int mode_panelsim; // do not access BLINKENBUS, no daemon, user oeprates simualted panel
+// program information
+extern char *program_info;       // description of this program
+extern const char *program_name; // argv[0]
+extern char *program_options;    // argv[1..argc]
 
-//extern int stmode; // no server, just test config
-extern char program_info[];
-extern char program_name[]; // argv[0]
-extern char program_options[]; // argv[1.argc-1]
+// Panel-specific GPIO row and column definitions
+extern const unsigned ledrows[];     // LED rows
+extern const unsigned num_ledrows;   // number of LED rows
+extern const unsigned rows[];        // switch rows
+extern const unsigned num_rows;      // number of switch rows
+extern const unsigned cols[];        // columns
+extern const unsigned num_cols;      // number of columns
 
-#endif
+// Panel-specific input (switch) and output (LED) fixup handlers
+extern void switch_fixup(int row, int switchscan);
+extern int led_fixup(blinkenlight_panel_t *p, blinkenlight_control_t *c,
+   int *panel_mode_ptr, uint32_t value, _Atomic uint32_t *gpio_ledstatus);
 
-#endif /* MAIN_H_ */
+#endif /* GLOBALS_H_ */
