@@ -50,7 +50,7 @@ BLINKENLIGHT_API_SOURCES.h = \
 	$(BLINKENLIGHT_COMMON_DIR)/mcout.h	\
 	$(BLINKENLIGHT_COMMON_DIR)/inputline.h
 
-all:    getcsw
+all:    $(OBJDIR)/getcsw
 
 $(BLINKENLIGHT_API_SOURCES.c) $(BLINKENLIGHT_API_SOURCES.h):
 	# rpcgen
@@ -71,7 +71,9 @@ clean:
 	make --directory=$(BLINKENLIGHT_API_DIR)/rpcgen_linux clean
 
 
-getcsw:	$(SOURCES.c) $(SOURCES.h)
-	${CC} $^ -o $@ $(CCDEFS) ${LDFLAGS}
-	mkdir -p $(OBJDIR) ; mv $@ $(OBJDIR) ; file $(OBJDIR)/$@
+$(OBJDIR)/getcsw:	$(OBJDIR) $(SOURCES.c) $(SOURCES.h)
+	${CC} -o $@ $(CCDEFS) $(SOURCES.c) ${LDFLAGS}
+
+$(OBJDIR):
+	mkdir -p $(OBJDIR)
 

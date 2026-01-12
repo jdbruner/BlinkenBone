@@ -1,45 +1,15 @@
-# rpcgen ... "NEWSTYLE (multiple arguments)
-#	and own "main()"
-
 #
 # CC Command
 #
 
-#OS_CCDEFS = -lrt -lm -D_GNU_SOURCE
 ifeq ($(MAKE_CONFIGURATION),RELEASE)
 CC_DBG_FLAGS = -O2 -Wno-unused-result
 else
 CC_DBG_FLAGS = -ggdb3 -O0
 endif
-#LIBS=-lm
-OS_CCDEFS =
 
-
-ifeq ($(MAKE_TARGET_ARCH),BBW)
-	#### !!! when cross compiling !!!!
-	# fuer beaglebone und angstrom stand alone toolchain
-	CC=$(BBW_CC) -std=c99 -U__STRICT_ANSI__ $(CC_DBG_FLAGS) $(OS_CCDEFS) -I.
-	OBJDIR=bin-bbw
-else ifeq ($(MAKE_TARGET_ARCH),BBB)
-	CC=$(BBB_CC) -std=c99 -U__STRICT_ANSI__ $(CC_DBG_FLAGS) $(OS_CCDEFS) -I.
-	OBJDIR=bin-bbb
-else ifeq ($(MAKE_TARGET_ARCH),RPI)
-	# CC=arm-linux-gnueabihf-gcc -std=c99 -U__STRICT_ANSI__ $(CC_DBG_FLAGS) $(OS_CCDEFS) -I.
-	OS_CCDEFS=$(CC_DBG_FLAGS) -I/usr/include/tirpc
-	LDFLAGS += -ltirpc
-	OBJDIR=bin-rpi
-else ifeq ($(MAKE_TARGET_ARCH),X86)
-	OS_CCDEFS=-m32 $(CC_DBG_FLAGS) -I/usr/include/tirpc
-	OBJDIR=bin-ubuntu-x86
-	LDFLAGS += -ltirpc
-else ifeq ($(MAKE_TARGET_ARCH),X64)
-	OS_CCDEFS=-m64 $(CC_DBG_FLAGS) -I/usr/include/tirpc
-	OBJDIR=bin-ubuntu-x64
-	LDFLAGS += -ltirpc
-else
-	$error("MAKE_TARGET_ARCH not set!")
-endif
-
+OS_CCDEFS=$(CC_DBG_FLAGS) -I/usr/include/tirpc
+LDFLAGS += -ltirpc
 
 CCDEFS= \
 	-DBLINKENLIGHT_CLIENT	\
@@ -49,6 +19,12 @@ CCDEFS= \
 	-I$(BLINKENLIGHT_API_DIR)/rpcgen_linux	\
 	$(CC_DBG_FLAGS) $(OS_CCDEFS)
 
+OBJDIR = ../../BIN
+
+#
+# Build everything
+#
+all:    $(OBJDIR)/blinkenlightapitst
 
 #########################################################
 # sub dir for the API. is same level (= sibling) as server and client
@@ -98,18 +74,14 @@ SOURCES.c = \
 	$(BLINKENLIGHT_API_SOURCES.c)
 
 OBJECTS = $(SOURCES.c:%.c=%.o)
-#
-# Build everything
-#
-all:    blinkenlightapitst
 
 clean:
 	rm -f core $(OBJDIR)/blinkenlighttst $(OBJECTS)
 	make --directory=$(BLINKENLIGHT_API_DIR)/rpcgen_linux clean
 
 
-blinkenlightapitst:	$(SOURCES.c) $(SOURCES.h)
-	${CC} $^ -o $@ $(CCDEFS) ${LDFLAGS}
-	# move to architecture out dir and check .. was it x86 or ARM?
-	mkdir -p $(OBJDIR) ; mv $@ $(OBJDIR) ; file $(OBJDIR)/$@
+$(OBJDIR)/blinkenlightapitst:	$(OBJDIR) $(SOURCES.c) $(SOURCES.h)
+	${CC} -o $@ $(CCDEFS) $(SOURCES.c) ${LDFLAGS}
 
+$(OBJDIR):
+	mkdir -p $(OBJDIR)

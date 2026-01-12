@@ -89,16 +89,17 @@ install:
 	# no-op for now
 	# eventually this should copy the binaries and set the capabilities for the panel server
 
-$(OBJDIR)/server11:	$(SERVER11_SOURCES.c) $(SOURCES.h)
+$(OBJDIR)/server11:	$(OBJDIR) $(SERVER11_SOURCES.c) $(SOURCES.h)
 ifneq ($(MAKE_TARGET_ARCH),RPI)
 	$(error PiDP11 server only builds for MAKE_TARGET_ARCH=RPI)
 endif
-	${CC} -o $@ $(CCDEFS) $^ ${LDFLAGS}
-	file $@
+	${CC} -o $@ $(CCDEFS) $(SERVER11_SOURCES.c) ${LDFLAGS}
 
-$(OBJDIR)/server8:	$(SERVER8_SOURCES.c) $(SOURCES.h)
+$(OBJDIR)/server8:	$(OBJDIR) $(SERVER8_SOURCES.c) $(SOURCES.h)
 ifneq ($(MAKE_TARGET_ARCH),RPI)
 	$(error PiDP9 server only builds for MAKE_TARGET_ARCH=RPI)
 endif
-	${CC} -o $@ $(CCDEFS) $^ ${LDFLAGS}
-	file $@
+	${CC} -o $@ $(CCDEFS) $(SERVER8_SOURCES.c) ${LDFLAGS}
+
+$(OBJDIR):
+	mkdir -p $(OBJDIR)
