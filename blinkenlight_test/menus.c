@@ -183,10 +183,12 @@ static void menu_controls(blinkenlight_panel_t *p)
 			int user_abort;
 
 			// check: a single number, a name, or a '*'?
+			action_buffer[0] = action_args_buffer[0] = '\0';
 			n_fields = sscanf(s_choice, "%s %s %s", controlnr_buffer, action_buffer, action_args_buffer);
 
 			if (!strcmp(controlnr_buffer, "*")) {
 				selected_outcontrol_menu_id = -1; // operate on all output controls
+				c = NULL;
 			} else {
 				// check: an valid output control name?
 				c = blinkenlight_panels_get_control_by_name(blinkenlight_api_client->panel_list, p,
@@ -198,12 +200,19 @@ static void menu_controls(blinkenlight_panel_t *p)
 					selected_outcontrol_menu_id = atoi(controlnr_buffer);
 			}
 
-			if (n_fields < 2) { // no <action> entered
-				printf("new action or %s value for output control %s (%d significant bits): ",
-						radix_getname_short(c->radix), c->name, c->value_bitlen);
-				scanf("%s", action_buffer);
+			if (n_fields == 1) { // no <action> entered
+				if (c != NULL)
+					printf("new action or %s value for output control %s (%d significant bits): ",
+							radix_getname_short(c->radix), c->name, c->value_bitlen);
+				else
+					printf("new action or value: ");
+				if (strlen((s_choice = getchoice())) != 0)
+					sscanf(s_choice, "%s", action_buffer);
 				printf("\n");
 			}
+
+			if (action_buffer[0] == '\0')
+				continue;
 
 			/* logic: iterate always over all controls,
 			 * do action for all controls, or only for the selected one
