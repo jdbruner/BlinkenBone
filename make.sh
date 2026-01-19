@@ -7,7 +7,6 @@
 # panel server.
 #
 
-export USE_REALCONS=1
 if [ -e /usr/bin/raspi-config ]; then
     MAKE_TARGET_NAME=RaspberryPi
     export MAKE_TARGET_ARCH=RPI USE_PIDP11=1
@@ -66,7 +65,7 @@ export MAKE_CONFIGURATION=RELEASE
     # PDP-11 simh
     echo ; echo "*** client11 - pdp11 with REALCONS ${USE_PIDP11+and PIDP11} for $MAKE_TARGET_NAME"
     cd ..
-    make pdp11 && mv BIN/pdp11 BIN/client11
+    make pdp11_realcons && mv BIN/pdp11_realcons BIN/client11
 )
 
 (
