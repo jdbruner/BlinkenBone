@@ -1,96 +1,24 @@
-#! /bin/bash
+#! /bin/sh
 #
-# This is a revision of the original make.sh script from the BlinkenBone project
-# which only builds on the local machine (no cross-compiling) and currently
-# builds the PDP-11 emulator, Java panel simulation, a utility to read the
-# switch register from the panel server, and - on Raspberry Pi - the PiDP11
-# panel server.
+# Build everything. Unlike the original BlinkenBone project, this
+# only builds on the local machine (no cross-compiling).
+#
+# This script ensures the necessary (apt) package dependencies are
+# present and then invokes make to do the real work.
 #
 
-if [ -e /usr/bin/raspi-config ]; then
-    MAKE_TARGET_NAME=RaspberryPi
-    export MAKE_TARGET_ARCH=RPI USE_PIDP11=1
- else
-    case $(uname -m) in
-        i386|i486|i586|i686)
-            MAKE_TARGET_NAME=x86
-            export MAKE_TARGET_ARCH=X86
-            ;;
-        x86_64)
-            MAKE_TARGET_NAME=x64
-            export MAKE_TARGET_ARCH=X64
-            ;;
-        *)
-            echo Unsupported machine type: $(uname -m)
-            exit 1
-            ;;
-    esac
- fi
+OBJDIR="../BIN"
+APTDONEFILE="$OBJDIR/.aptdone"
+
+PACKAGES="ant default-jdk rpcbind screen \
+  libgpiod-dev libtirpc-dev libsdl2-dev libpcap-dev libreadline-dev \
+  libpcre2-dev libedit-dev libpng-dev libvdeplug-dev"
 
 # stop on error
 set -e
 
-# Debugging:
-# set -x
-
-# needed packages:
-PACKAGES="\
-  ant default-jdk rpcbind screen \
-  libgpiod-dev libtirpc-dev libsdl2-dev libpcap-dev libreadline-dev libpcre2-dev libedit-dev libpng-dev libvdeplug-dev"
-(set -x; sudo apt install $PACKAGES)
-
-# libgpiod has a breaking change with v2
-if apt-cache show libgpiod-dev | grep -q '^Version: 1\.'; then
-    USE_LIBGPIOD_V1=1 export USE_LIBGPIOD_V1
+if [ ! -e $APTDONEFILE ]; then
+    (set -x; sudo apt install $PACKAGES) && touch $APTDONEFILE
 fi
 
-# compile all binaries for all platforms
-pwd
-MAKEOPTIONS=--silent
-MAKETARGETS="clean all"
-
-# optimize all compiles, see makefiles
-#export MAKE_CONFIGURATION=DEBUG
-export MAKE_CONFIGURATION=RELEASE
-
-(
-    # The Blinkenlight API test client for all platforms.
-    # This also builds the blinkenlight_api interface
-    cd blinkenlight_test
-    echo ; echo "*** blinkenlight_test for $MAKE_TARGET_NAME"
-    make $MAKEOPTIONS $MAKETARGETS
-)
-
-(
-    # PDP-11 simh
-    echo ; echo "*** client11 - pdp11 with REALCONS ${USE_PIDP11+and PIDP11} for $MAKE_TARGET_NAME"
-    cd ..
-    make pdp11_realcons && mv BIN/pdp11_realcons BIN/client11
-)
-
-(
-    # All classes and resources for all Java panels into one jar
-    echo ; echo "*** Java panel server"
-    cd javapanelsim
-    ant -f build.xml compile jar
-)
-
-(
-    # utility to read panel switches using the PiDP11 or Java panel server
-    cd blinkenlight_getcsw/pidp11
-    echo ; echo "*** blinkenlight_getcsw for $MAKE_TARGET_NAME"
-    make $MAKEOPTIONS $MAKETARGETS
-)
-
-if [ $MAKE_TARGET_ARCH = RPI ]; then
-    (
-        # the Blinkenlight API server for Oscar Vermeulen's PiDP11 and PiDP8
-        cd pidp_server/server
-        echo ; echo "*** server11, server8 [untested] for $MAKE_TARGET_NAME"
-        make $MAKEOPTIONS $MAKETARGETS
-    )
-fi
-
-echo
-echo "All OK!"
-exit 0
+exec make 

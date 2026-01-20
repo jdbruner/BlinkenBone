@@ -71,9 +71,5 @@ clean:
 	make --directory=$(BLINKENLIGHT_API_DIR)/rpcgen_linux clean
 
 
-$(OBJDIR)/getcsw:	$(OBJDIR) $(SOURCES.c) $(SOURCES.h)
+$(OBJDIR)/getcsw:	$(SOURCES.c) $(SOURCES.h)
 	${CC} -o $@ $(CCDEFS) $(SOURCES.c) ${LDFLAGS}
-
-$(OBJDIR):
-	mkdir -p $(OBJDIR)
-

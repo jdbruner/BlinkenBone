@@ -80,8 +80,5 @@ clean:
 	make --directory=$(BLINKENLIGHT_API_DIR)/rpcgen_linux clean
 
 
-$(OBJDIR)/blinkenlightapitst:	$(OBJDIR) $(SOURCES.c) $(SOURCES.h)
+$(OBJDIR)/blinkenlightapitst:	$(SOURCES.c) $(SOURCES.h)
 	${CC} -o $@ $(CCDEFS) $(SOURCES.c) ${LDFLAGS}
-
-$(OBJDIR):
-	mkdir -p $(OBJDIR)

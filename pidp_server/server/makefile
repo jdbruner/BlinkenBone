@@ -1,10 +1,25 @@
-# call with MAKE_TARGET_ARCH=RPI
-# if using libgpiod-dev v1, call with USE_LIBGPIOD_V1=1
+#
+# Platform checks
+#
+# This only builds on a Raspberry Pi
+# Determine the correct version of libgpiod
+USE_LIBGPIOD_V1=
+MAKE_TARGET_ARCH=other
+ifneq (,$(wildcard /usr/bin/raspi-config))
+  MAKE_TARGET_ARCH=RPI
+  ifneq (,$(shell apt-cache show libgpiod-dev | grep '^Version: 1\.'))
+    USE_LIBGPIOD_V1=yes
+  endif
+endif
 
 #
 # CC Command
 #
+ifeq ($(MAKE_CONFIGURATION),RELEASE)
+CC_DBG_FLAGS = -O2 -Wno-unused-result
+else
 CC_DBG_FLAGS = -ggdb3 -O0
+endif
 OS_CCDEFS=-I/usr/include/tirpc
 OBJDIR=../../../BIN
 LDFLAGS=-lrt -pthread -lgpiod -ltirpc
@@ -89,17 +104,14 @@ install:
 	# no-op for now
 	# eventually this should copy the binaries and set the capabilities for the panel server
 
-$(OBJDIR)/server11:	$(OBJDIR) $(SERVER11_SOURCES.c) $(SOURCES.h)
+$(OBJDIR)/server11:	$(SERVER11_SOURCES.c) $(SOURCES.h)
 ifneq ($(MAKE_TARGET_ARCH),RPI)
 	$(error PiDP11 server only builds for MAKE_TARGET_ARCH=RPI)
 endif
 	${CC} -o $@ $(CCDEFS) $(SERVER11_SOURCES.c) ${LDFLAGS}
 
-$(OBJDIR)/server8:	$(OBJDIR) $(SERVER8_SOURCES.c) $(SOURCES.h)
+$(OBJDIR)/server8:	$(SERVER8_SOURCES.c) $(SOURCES.h)
 ifneq ($(MAKE_TARGET_ARCH),RPI)
 	$(error PiDP9 server only builds for MAKE_TARGET_ARCH=RPI)
 endif
 	${CC} -o $@ $(CCDEFS) $(SERVER8_SOURCES.c) ${LDFLAGS}
-
-$(OBJDIR):
-	mkdir -p $(OBJDIR)
