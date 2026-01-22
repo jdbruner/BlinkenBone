@@ -18,7 +18,9 @@ PACKAGES="ant default-jdk rpcbind screen \
 set -e
 
 if [ ! -e $APTDONEFILE ]; then
-    (set -x; sudo apt install $PACKAGES) && touch $APTDONEFILE
+    (set -x; sudo apt install $PACKAGES)
+    mkdir -p $OBJDIR
+    touch $APTDONEFILE
 fi
 
 exec make 
