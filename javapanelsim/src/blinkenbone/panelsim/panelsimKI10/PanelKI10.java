@@ -810,25 +810,25 @@ public class PanelKI10 extends JPanel implements Observer {
 						leds_INSTRUCTION.outputcontrol, 35 - 35, false));
 		leds_IOB_PI_REQUEST.visualization
 				.add(new DimmableLedControlSliceVisualization("led_IOB_PI_REQUEST1_on.png",
-						leds_IOB_PI_REQUEST, leds_IOB_PI_REQUEST.outputcontrol, 1, false));
-		leds_IOB_PI_REQUEST.visualization
-				.add(new DimmableLedControlSliceVisualization("led_IOB_PI_REQUEST2_on.png",
-						leds_IOB_PI_REQUEST, leds_IOB_PI_REQUEST.outputcontrol, 2, false));
-		leds_IOB_PI_REQUEST.visualization
-				.add(new DimmableLedControlSliceVisualization("led_IOB_PI_REQUEST3_on.png",
-						leds_IOB_PI_REQUEST, leds_IOB_PI_REQUEST.outputcontrol, 3, false));
-		leds_IOB_PI_REQUEST.visualization
-				.add(new DimmableLedControlSliceVisualization("led_IOB_PI_REQUEST4_on.png",
-						leds_IOB_PI_REQUEST, leds_IOB_PI_REQUEST.outputcontrol, 4, false));
-		leds_IOB_PI_REQUEST.visualization
-				.add(new DimmableLedControlSliceVisualization("led_IOB_PI_REQUEST5_on.png",
-						leds_IOB_PI_REQUEST, leds_IOB_PI_REQUEST.outputcontrol, 5, false));
-		leds_IOB_PI_REQUEST.visualization
-				.add(new DimmableLedControlSliceVisualization("led_IOB_PI_REQUEST6_on.png",
 						leds_IOB_PI_REQUEST, leds_IOB_PI_REQUEST.outputcontrol, 6, false));
 		leds_IOB_PI_REQUEST.visualization
+				.add(new DimmableLedControlSliceVisualization("led_IOB_PI_REQUEST2_on.png",
+						leds_IOB_PI_REQUEST, leds_IOB_PI_REQUEST.outputcontrol, 5, false));
+		leds_IOB_PI_REQUEST.visualization
+				.add(new DimmableLedControlSliceVisualization("led_IOB_PI_REQUEST3_on.png",
+						leds_IOB_PI_REQUEST, leds_IOB_PI_REQUEST.outputcontrol, 4, false));
+		leds_IOB_PI_REQUEST.visualization
+				.add(new DimmableLedControlSliceVisualization("led_IOB_PI_REQUEST4_on.png",
+						leds_IOB_PI_REQUEST, leds_IOB_PI_REQUEST.outputcontrol, 3, false));
+		leds_IOB_PI_REQUEST.visualization
+				.add(new DimmableLedControlSliceVisualization("led_IOB_PI_REQUEST5_on.png",
+						leds_IOB_PI_REQUEST, leds_IOB_PI_REQUEST.outputcontrol, 2, false));
+		leds_IOB_PI_REQUEST.visualization
+				.add(new DimmableLedControlSliceVisualization("led_IOB_PI_REQUEST6_on.png",
+						leds_IOB_PI_REQUEST, leds_IOB_PI_REQUEST.outputcontrol, 1, false));
+		leds_IOB_PI_REQUEST.visualization
 				.add(new DimmableLedControlSliceVisualization("led_IOB_PI_REQUEST7_on.png",
-						leds_IOB_PI_REQUEST, leds_IOB_PI_REQUEST.outputcontrol, 7, false));
+						leds_IOB_PI_REQUEST, leds_IOB_PI_REQUEST.outputcontrol, 0, false));
 		led_KEY_MAINT.visualization.add(new DimmableLedControlSliceVisualization("led_KEY_MAINT_on.png",
 				led_KEY_MAINT, led_KEY_MAINT.outputcontrol, 0, false));
 		led_KEY_PG_FAIL.visualization.add(new DimmableLedControlSliceVisualization("led_KEY_PG_FAIL.png",
@@ -844,58 +844,58 @@ public class PanelKI10 extends JPanel implements Observer {
 		leds_MODE.visualization.add(new DimmableLedControlSliceVisualization("led_MODE3_on.png", leds_MODE,
 				leds_MODE.outputcontrol, 3, false));
 		leds_PI_ACTIVE.visualization.add(new DimmableLedControlSliceVisualization("led_PI_ACTIVE1_on.png",
-				leds_PI_ACTIVE, leds_PI_ACTIVE.outputcontrol, 1, false));
-		leds_PI_ACTIVE.visualization.add(new DimmableLedControlSliceVisualization("led_PI_ACTIVE2_on.png",
-				leds_PI_ACTIVE, leds_PI_ACTIVE.outputcontrol, 2, false));
-		leds_PI_ACTIVE.visualization.add(new DimmableLedControlSliceVisualization("led_PI_ACTIVE3_on.png",
-				leds_PI_ACTIVE, leds_PI_ACTIVE.outputcontrol, 3, false));
-		leds_PI_ACTIVE.visualization.add(new DimmableLedControlSliceVisualization("led_PI_ACTIVE4_on.png",
-				leds_PI_ACTIVE, leds_PI_ACTIVE.outputcontrol, 4, false));
-		leds_PI_ACTIVE.visualization.add(new DimmableLedControlSliceVisualization("led_PI_ACTIVE5_on.png",
-				leds_PI_ACTIVE, leds_PI_ACTIVE.outputcontrol, 5, false));
-		leds_PI_ACTIVE.visualization.add(new DimmableLedControlSliceVisualization("led_PI_ACTIVE6_on.png",
 				leds_PI_ACTIVE, leds_PI_ACTIVE.outputcontrol, 6, false));
+		leds_PI_ACTIVE.visualization.add(new DimmableLedControlSliceVisualization("led_PI_ACTIVE2_on.png",
+				leds_PI_ACTIVE, leds_PI_ACTIVE.outputcontrol, 5, false));
+		leds_PI_ACTIVE.visualization.add(new DimmableLedControlSliceVisualization("led_PI_ACTIVE3_on.png",
+				leds_PI_ACTIVE, leds_PI_ACTIVE.outputcontrol, 4, false));
+		leds_PI_ACTIVE.visualization.add(new DimmableLedControlSliceVisualization("led_PI_ACTIVE4_on.png",
+				leds_PI_ACTIVE, leds_PI_ACTIVE.outputcontrol, 3, false));
+		leds_PI_ACTIVE.visualization.add(new DimmableLedControlSliceVisualization("led_PI_ACTIVE5_on.png",
+				leds_PI_ACTIVE, leds_PI_ACTIVE.outputcontrol, 2, false));
+		leds_PI_ACTIVE.visualization.add(new DimmableLedControlSliceVisualization("led_PI_ACTIVE6_on.png",
+				leds_PI_ACTIVE, leds_PI_ACTIVE.outputcontrol, 1, false));
 		leds_PI_ACTIVE.visualization.add(new DimmableLedControlSliceVisualization("led_PI_ACTIVE7_on.png",
-				leds_PI_ACTIVE, leds_PI_ACTIVE.outputcontrol, 7, false));
+				leds_PI_ACTIVE, leds_PI_ACTIVE.outputcontrol, 0, false));
 		leds_PI_IN_PROGRESS.visualization
 				.add(new DimmableLedControlSliceVisualization("led_PI_IN_PROGRESS1_on.png",
-						leds_PI_IN_PROGRESS, leds_PI_IN_PROGRESS.outputcontrol, 1, false));
-		leds_PI_IN_PROGRESS.visualization
-				.add(new DimmableLedControlSliceVisualization("led_PI_IN_PROGRESS2_on.png",
-						leds_PI_IN_PROGRESS, leds_PI_IN_PROGRESS.outputcontrol, 2, false));
-		leds_PI_IN_PROGRESS.visualization
-				.add(new DimmableLedControlSliceVisualization("led_PI_IN_PROGRESS3_on.png",
-						leds_PI_IN_PROGRESS, leds_PI_IN_PROGRESS.outputcontrol, 3, false));
-		leds_PI_IN_PROGRESS.visualization
-				.add(new DimmableLedControlSliceVisualization("led_PI_IN_PROGRESS4_on.png",
-						leds_PI_IN_PROGRESS, leds_PI_IN_PROGRESS.outputcontrol, 4, false));
-		leds_PI_IN_PROGRESS.visualization
-				.add(new DimmableLedControlSliceVisualization("led_PI_IN_PROGRESS5_on.png",
-						leds_PI_IN_PROGRESS, leds_PI_IN_PROGRESS.outputcontrol, 5, false));
-		leds_PI_IN_PROGRESS.visualization
-				.add(new DimmableLedControlSliceVisualization("led_PI_IN_PROGRESS6_on.png",
 						leds_PI_IN_PROGRESS, leds_PI_IN_PROGRESS.outputcontrol, 6, false));
 		leds_PI_IN_PROGRESS.visualization
+				.add(new DimmableLedControlSliceVisualization("led_PI_IN_PROGRESS2_on.png",
+						leds_PI_IN_PROGRESS, leds_PI_IN_PROGRESS.outputcontrol, 5, false));
+		leds_PI_IN_PROGRESS.visualization
+				.add(new DimmableLedControlSliceVisualization("led_PI_IN_PROGRESS3_on.png",
+						leds_PI_IN_PROGRESS, leds_PI_IN_PROGRESS.outputcontrol, 4, false));
+		leds_PI_IN_PROGRESS.visualization
+				.add(new DimmableLedControlSliceVisualization("led_PI_IN_PROGRESS4_on.png",
+						leds_PI_IN_PROGRESS, leds_PI_IN_PROGRESS.outputcontrol, 3, false));
+		leds_PI_IN_PROGRESS.visualization
+				.add(new DimmableLedControlSliceVisualization("led_PI_IN_PROGRESS5_on.png",
+						leds_PI_IN_PROGRESS, leds_PI_IN_PROGRESS.outputcontrol, 2, false));
+		leds_PI_IN_PROGRESS.visualization
+				.add(new DimmableLedControlSliceVisualization("led_PI_IN_PROGRESS6_on.png",
+						leds_PI_IN_PROGRESS, leds_PI_IN_PROGRESS.outputcontrol, 1, false));
+		leds_PI_IN_PROGRESS.visualization
 				.add(new DimmableLedControlSliceVisualization("led_PI_IN_PROGRESS7_on.png",
-						leds_PI_IN_PROGRESS, leds_PI_IN_PROGRESS.outputcontrol, 7, false));
+						leds_PI_IN_PROGRESS, leds_PI_IN_PROGRESS.outputcontrol, 0, false));
 		led_PI_OK_8.visualization.add(new DimmableLedControlSliceVisualization("led_PI_OK_8_on.png",
 				led_PI_OK_8, led_PI_OK_8.outputcontrol, 0, false));
 		led_PI_ON.visualization.add(new DimmableLedControlSliceVisualization("led_PI_ON_on.png", led_PI_ON,
 				led_PI_ON.outputcontrol, 0, false));
 		leds_PI_REQUEST.visualization.add(new DimmableLedControlSliceVisualization("led_PI_REQUEST1_on.png",
-				leds_PI_REQUEST, leds_PI_REQUEST.outputcontrol, 1, false));
-		leds_PI_REQUEST.visualization.add(new DimmableLedControlSliceVisualization("led_PI_REQUEST2_on.png",
-				leds_PI_REQUEST, leds_PI_REQUEST.outputcontrol, 2, false));
-		leds_PI_REQUEST.visualization.add(new DimmableLedControlSliceVisualization("led_PI_REQUEST3_on.png",
-				leds_PI_REQUEST, leds_PI_REQUEST.outputcontrol, 3, false));
-		leds_PI_REQUEST.visualization.add(new DimmableLedControlSliceVisualization("led_PI_REQUEST4_on.png",
-				leds_PI_REQUEST, leds_PI_REQUEST.outputcontrol, 4, false));
-		leds_PI_REQUEST.visualization.add(new DimmableLedControlSliceVisualization("led_PI_REQUEST5_on.png",
-				leds_PI_REQUEST, leds_PI_REQUEST.outputcontrol, 5, false));
-		leds_PI_REQUEST.visualization.add(new DimmableLedControlSliceVisualization("led_PI_REQUEST6_on.png",
 				leds_PI_REQUEST, leds_PI_REQUEST.outputcontrol, 6, false));
+		leds_PI_REQUEST.visualization.add(new DimmableLedControlSliceVisualization("led_PI_REQUEST2_on.png",
+				leds_PI_REQUEST, leds_PI_REQUEST.outputcontrol, 5, false));
+		leds_PI_REQUEST.visualization.add(new DimmableLedControlSliceVisualization("led_PI_REQUEST3_on.png",
+				leds_PI_REQUEST, leds_PI_REQUEST.outputcontrol, 4, false));
+		leds_PI_REQUEST.visualization.add(new DimmableLedControlSliceVisualization("led_PI_REQUEST4_on.png",
+				leds_PI_REQUEST, leds_PI_REQUEST.outputcontrol, 3, false));
+		leds_PI_REQUEST.visualization.add(new DimmableLedControlSliceVisualization("led_PI_REQUEST5_on.png",
+				leds_PI_REQUEST, leds_PI_REQUEST.outputcontrol, 2, false));
+		leds_PI_REQUEST.visualization.add(new DimmableLedControlSliceVisualization("led_PI_REQUEST6_on.png",
+				leds_PI_REQUEST, leds_PI_REQUEST.outputcontrol, 1, false));
 		leds_PI_REQUEST.visualization.add(new DimmableLedControlSliceVisualization("led_PI_REQUEST7_on.png",
-				leds_PI_REQUEST, leds_PI_REQUEST.outputcontrol, 7, false));
+				leds_PI_REQUEST, leds_PI_REQUEST.outputcontrol, 0, false));
 		led_POWER.visualization.add(new DimmableLedControlSliceVisualization("led_POWER_on.png", led_POWER,
 				led_POWER.outputcontrol, 0, false));
 		leds_PROGRAM_COUNTER.visualization.add(new DimmableLedControlSliceVisualization(
