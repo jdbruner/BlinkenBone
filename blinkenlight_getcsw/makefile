@@ -9,7 +9,7 @@ CC_DBG_FLAGS = -ggdb3 -O0
 endif
 
 OS_CCDEFS =
-OBJDIR=../../../BIN
+OBJDIR=../../BIN
 OS_CCDEFS += $(CC_DBG_FLAGS) -I/usr/include/tirpc
 LDFLAGS += -ltirpc
 
@@ -23,8 +23,8 @@ CCDEFS= \
 
 
 #########################################################
-BLINKENLIGHT_COMMON_DIR=../../common
-BLINKENLIGHT_API_DIR=../../blinkenlight_api
+BLINKENLIGHT_COMMON_DIR=../common
+BLINKENLIGHT_API_DIR=../blinkenlight_api
 
 # *_svc, *_xdr and api.h sources must be created with rpcgen
 BLINKENLIGHT_API_SOURCES.c = \

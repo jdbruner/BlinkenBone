@@ -23,30 +23,66 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <ctype.h>
 #include <assert.h>
 #include <unistd.h>
+#include <string.h>
 #include <sys/param.h>
 #include "blinkenlight_api_client.h"
 
-#define SERVER_NAME "localhost"
-#define PDP1170_NAME "11/70"
-#define PDP1170_SWITCH_REGISTER "SR"
+struct panel_config {
+    char *panel_name;           /* name of the Blinkenlight panel */
+    char *control_name;         /* name of the switch register control */
+} panel_info[] = {
+    { "11/70", "SR" },
+    { "11/40", "SR" },
+    { "11/20", "SR" },
+    { "PDP8I", "SR" }
+};
+
+#define _countof(x) (sizeof (x) / sizeof *(x))
+
+static void
+list_panels(FILE *fp)
+{
+    register int i;
+
+    fprintf(fp, "Known panels:");
+    for (i = 0; i < _countof(panel_info); i++)
+        fprintf(fp, " %s", panel_info[i].panel_name);
+    fputc('\n', fp);
+}
+
+static struct panel_config *
+get_panel_config(char *name)
+{
+    register int i = _countof(panel_info);
+    register struct panel_config *p;
+
+    for (p = panel_info; i-- > 0; p++)
+        if (!strcmp(name, p->panel_name))
+                return p;
+    return NULL;
+}
 
 int
 main(int argc, const char *const *argv)
 {
     int retval = 1;
-    const char *argv0 = (argc > 0) ? argv[0] : "blscansw";
+    const char *argv0 = (argc > 0) ? argv[0] : "getcsw";
+    char *server_name = "localhost";
+    struct panel_config *panel_config = &panel_info[0];
     char radix = 'u';
     int width = 0;
     int zerofill = 0;
     unsigned long bitmask = ~0uL;
     char format[16];
+    int i;
 
     while (1) {
         /* parse arguments */
-        int c = getopt(argc, (char **)argv, "0d::o::x::n:?");
+        int c = getopt(argc, (char **)argv, "0d::o::x::n:h:p:?");
         if (c == -1)
             break;
 
@@ -60,7 +96,7 @@ main(int argc, const char *const *argv)
         case 'u':
         case 'o':
         case 'x':
-            /* sthe numeric radix formatter (decimal, octal, hexadecimal) */
+            /* the numeric radix formatter (decimal, octal, hexadecimal) */
             radix = (c == 'd') ? 'u' : c;
             if (optarg != NULL) {
                 width = atoi(optarg);
@@ -79,12 +115,29 @@ main(int argc, const char *const *argv)
             }
             break;
 
+        case 'h':
+            /* hostname for the Blinkenlight server */
+            if (optarg != NULL)
+                server_name = optarg;
+            break;
+
+        case 'p':
+            /* name of the panel */
+            if (optarg != NULL) {
+                if ((panel_config = get_panel_config(optarg)) == NULL) {
+                    fprintf(stderr, "Unknown panel name: %s\n", optarg);
+                    list_panels(stderr);
+                    return 1;
+                }
+            }
+            break;
+
         default:
             fprintf(stderr, "%s: unknown argument \"%c\"\n", argv0, c);
-            // fall through
+            /* fall through */
         case '?':
-            fprintf(stderr, "Usage: \"%s [-0] [-d[N]|-o[N]|-x[N]] [-nN]\"\n", argv0);
-            return -1;
+            fprintf(stderr, "Usage: \"%s [-0] [-d[N]|-o[N]|-x[N]] [-nN] [-hHOSTNAME] [-pPANELNAME]\"\n", argv0);
+            return 1;
         }
     }
 
@@ -94,7 +147,7 @@ main(int argc, const char *const *argv)
     /* connect to the blinkenlight server */
     blinkenlight_api_client_t *blinkenlight_api_client = blinkenlight_api_client_constructor();
 
-	if (blinkenlight_api_client_connect(blinkenlight_api_client, SERVER_NAME) != 0) {
+	if (blinkenlight_api_client_connect(blinkenlight_api_client, server_name) != 0) {
 		fputs(blinkenlight_api_client_get_error_text(blinkenlight_api_client), stderr);
 		return 1;
 	}
@@ -105,16 +158,17 @@ main(int argc, const char *const *argv)
 		goto out;
 	}
 
-    /* get the PDP-11/70 panel and its input controls */
-    blinkenlight_panel_t *pdp1170_panel =
-        blinkenlight_panels_get_panel_by_name(blinkenlight_api_client->panel_list, PDP1170_NAME);
+    /* get the selected panel and its input controls */
+    blinkenlight_panel_t *panel =
+        blinkenlight_panels_get_panel_by_name(blinkenlight_api_client->panel_list, panel_config->panel_name);
     
-    if (pdp1170_panel == NULL) {
-        fprintf(stderr, "%s: %s panel not found\n", argv0, PDP1170_NAME);
+    if (panel == NULL) {
+        fprintf(stderr, "%s: %s panel not found\n", argv0,
+                panel_config->panel_name);
         goto out;
     }
 
-    if (blinkenlight_api_client_get_inputcontrols_values(blinkenlight_api_client, pdp1170_panel) != 0) {
+    if (blinkenlight_api_client_get_inputcontrols_values(blinkenlight_api_client, panel) != 0) {
         fputs(blinkenlight_api_client_get_error_text(blinkenlight_api_client), stderr);
         goto out;
     }
@@ -122,14 +176,15 @@ main(int argc, const char *const *argv)
     /* get the current value of the switch register */
     blinkenlight_control_t *switch_register =
         blinkenlight_panels_get_control_by_name(blinkenlight_api_client->panel_list,
-                                                pdp1170_panel, PDP1170_SWITCH_REGISTER, 1);
+                                                panel, panel_config->control_name, 1);
     if (switch_register == NULL) {
-        fprintf(stderr, "%s: %s control not found\n", argv0, PDP1170_SWITCH_REGISTER);
+        fprintf(stderr, "%s: %s control not found\n", argv0,
+                panel_config->control_name);
         goto out;
     }
 
     /* print the switch register according to the format determined above */
-    printf(format, (unsigned long)switch_register->value & bitmask);
+    printf(format, (uint64_t)switch_register->value & bitmask);
     retval = 0;
 
 out:

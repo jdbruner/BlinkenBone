@@ -7,7 +7,7 @@ PDP11RC = pdp11_realcons
 
 CLIENT11DIR = ..
 SERVER11DIR = pidp_server/server
-GETCSWDIR = blinkenlight_getcsw/pidp11
+GETCSWDIR = blinkenlight_getcsw
 BLTESTDIR = blinkenlight_test
 BLAPIDIR = blinkenlight_api/rpcgen_linux
 PANELSIMDIR = javapanelsim
