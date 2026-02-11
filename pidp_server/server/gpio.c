@@ -26,7 +26,7 @@
  01-Apr-2016  OV    almost perfect before VCF SE
  15-Mar-2016  JH    display patterns for brightness levels
  16-Nov-2015  JH    acquired from Oscar
- 01-Sep-2023  JB	rewritten for libgpiod
+ 01-Sep-2023  JB    rewritten for libgpiod
  22-Jun-2025  JB    use atomics to avoid races
  15-Oct-2025  JB    rewritten for libgpiod v2 (breaking change)
  17-Oct-2025  JB    changes to use libgpiod instead of direct access to /dev/mem

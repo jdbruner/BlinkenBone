@@ -25,9 +25,6 @@
    06-Jan-2026  JB      refactored into pidp_server, Windows support removed
 */
 
-
-#define LOGGING_C_
-
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
@@ -37,78 +34,80 @@
 
 #include "print.h"
 
-int print_level; // global level to log
+int print_level = LOG_NOTICE; // global level to log
 
-static int print_syslog = 0; // 1, wenn nach syslog geschrieben wird. Sonst stderr.
+static int print_syslog = 0; // 1 to write to syslog; otherwise stderr
 
-void print_open(int use_syslog)
+void
+print_open(int use_syslog)
 {
-	print_syslog = use_syslog;
-	if (print_syslog) {
-		openlog("blinkenlightd", LOG_CONS, LOG_USER);
-	}
+    print_syslog = use_syslog;
+    if (print_syslog)
+        openlog("blinkenlightd", LOG_CONS, LOG_USER);
 }
 
-void print_close(void)
+void
+print_close(void)
 {
-	if (print_syslog) {
-		closelog();
-	}
+    if (print_syslog)
+        closelog();
 }
 
 /*
  * Output into stderr or logfile
  */
-void print(int level, const char* format, ...)
+void
+print(int level, const char *format, ...)
 {
-	va_list argptr;
-	struct timeval tv;
-	struct tm *tm;
-	char buffer[256];
-	va_start(argptr, format);
-	if (level <= print_level) {
-		if (print_syslog) {
-			vsyslog(level, format, argptr);
-		} else {
-			gettimeofday(&tv, NULL );
-			tm = gmtime(&(tv.tv_sec));
-			// print with 10th of secs
-			fprintf(stderr, "[%d:%02d:%02d.%03ld] ", tm->tm_hour, tm->tm_min, tm->tm_sec,
-					tv.tv_usec / 1000);
-			vfprintf(stderr, format, argptr);
-			va_end(argptr);
-		}
-	}
+    va_list argptr;
+    struct timeval tv;
+    struct tm *tm;
+    char buffer[256];
+    va_start(argptr, format);
+    if (level <= print_level) {
+        if (print_syslog) {
+            vsyslog(level, format, argptr);
+        } else {
+            gettimeofday(&tv, NULL );
+            tm = gmtime(&(tv.tv_sec));
+            // print with 10th of secs
+            fprintf(stderr, "[%d:%02d:%02d.%03ld] ", tm->tm_hour, tm->tm_min, tm->tm_sec,
+                    tv.tv_usec / 1000);
+            vfprintf(stderr, format, argptr);
+            va_end(argptr);
+        }
+    }
 }
 
 /*
- * print a range of bytes, localated at some start address
+ * print a range of bytes, located at some start address
  */
-void print_memdump(int level, char *info, unsigned start_addr, unsigned count, unsigned char *data)
+void
+print_memdump(int level, char *info, unsigned start_addr, unsigned count, unsigned char *data)
 {
-	char buff[1000], buff1[100];
-	unsigned i;
-	int  buff_empty ;
-	buff[0] = 0;
-	if (info)
-		strcat(buff, info);
-	sprintf(buff1, "start=0x%04x, data[0..%2u]=", start_addr, count - 1);
-	strcat(buff, buff1);
-	buff_empty = 0;
-	// break every 16 bytes
-	for (i = 0; i < count; i++) {
-		if (i && (i % 16 == 0)) {
-			print(level, "%s\n", buff);
-			strcpy(buff, "        ");
-		    buff_empty = 1;
-		}
-		if (i % 16 == 8)
-		    strcat(buff, " ") ; // mark every 8
-		sprintf(buff1, "%02x ", (unsigned) data[i]);
-		strcat(buff, buff1);
+    char buff[1000], buff1[100];
+    unsigned i;
+    int  buff_empty ;
+    buff[0] = 0;
+    if (info)
+        strcat(buff, info);
+    sprintf(buff1, "start=0x%04x, data[0..%2u]=", start_addr, count - 1);
+    strcat(buff, buff1);
+    buff_empty = 0;
+    // break every 16 bytes
+    for (i = 0; i < count; i++) {
+        if (i && (i % 16 == 0)) {
+            print(level, "%s\n", buff);
+            strcpy(buff, "        ");
+            buff_empty = 1;
+        }
+        if (i % 16 == 8)
+            strcat(buff, " ") ; // mark every 8
+        sprintf(buff1, "%02x ", (unsigned) data[i]);
+        strcat(buff, buff1);
         buff_empty = 0;
-	}
-	if (!buff_empty) // something left in buffer
-		print(level, "%s\n", buff);
+    }
+    if (!buff_empty) // something left in buffer
+        print(level, "%s\n", buff);
 }
 

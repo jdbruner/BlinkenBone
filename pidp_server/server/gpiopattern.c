@@ -168,7 +168,7 @@ static char brightness_phase_lookup[GPIOPATTERN_LED_BRIGHTNESS_LEVELS][GPIOPATTE
  * control value maybe a pattern for a brightness phase of the value
  */
 static void value2gpio_ledstatus_value(blinkenlight_panel_t *p, blinkenlight_control_t *c,
-	uint32_t value, _Atomic uint32_t *gpio_ledstatus)
+    uint32_t value, _Atomic uint32_t *gpio_ledstatus)
 {
     unsigned i_register_wiring;
     int panel_mode = p->mode ;
@@ -178,21 +178,21 @@ static void value2gpio_ledstatus_value(blinkenlight_panel_t *p, blinkenlight_con
         return;
 
     // panel-independent value conversion
-	switch (panel_mode) {
-	case RPC_PARAM_VALUE_PANEL_MODE_NORMAL:
+    switch (panel_mode) {
+    case RPC_PARAM_VALUE_PANEL_MODE_NORMAL:
         if (c->mirrored_bit_order) {
             value = mirror_bits(value, c->value_bitlen);
         }
-		break;
-	case RPC_PARAM_VALUE_PANEL_MODE_LAMPTEST:
-	case RPC_PARAM_VALUE_PANEL_MODE_ALLTEST:
+        break;
+    case RPC_PARAM_VALUE_PANEL_MODE_LAMPTEST:
+    case RPC_PARAM_VALUE_PANEL_MODE_ALLTEST:
         value = BitmaskFromLen64[c->value_bitlen]; // all '1'
-		break;
-	case RPC_PARAM_VALUE_PANEL_MODE_POWERLESS:
-		// all LEDs off, but do not change control values
+        break;
+    case RPC_PARAM_VALUE_PANEL_MODE_POWERLESS:
+        // all LEDs off, but do not change control values
         value = 0;
-		break;
-	}
+        break;
+    }
 
     // write value to gpio registers
     for (i_register_wiring = 0; i_register_wiring < c->blinkenbus_register_wiring_count;
@@ -229,57 +229,57 @@ static void value2gpio_ledstatus_value(blinkenlight_panel_t *p, blinkenlight_con
  */
 void *gpiopattern_update_leds(void *terminate)
 {
-	while (*(_Atomic int *)terminate == 0) {
-		blinkenlight_panel_t *p = gpiopattern_blinkenlight_panel; // short alias
-		uint64_t now_us;
-		unsigned i;
+    while (*(_Atomic int *)terminate == 0) {
+        blinkenlight_panel_t *p = gpiopattern_blinkenlight_panel; // short alias
+        uint64_t now_us;
+        unsigned i;
 
-		// wait for one period
-		nanosleep((struct timespec []) {{0, gpiopattern_update_period_us * 1000}}, NULL);
+        // wait for one period
+        nanosleep((struct timespec []) {{0, gpiopattern_update_period_us * 1000}}, NULL);
 
-		if (p == NULL)
-			continue;
+        if (p == NULL)
+            continue;
 
-		now_us = historybuffer_now_us();
+        now_us = historybuffer_now_us();
 
-		// mount values for gpio_registers ordered by register,
-		// else flicker by co-running gpio_mux may occur.
-		for (i = 0; i < p->controls_count; i++) {
-			blinkenlight_control_t *c = &p->controls[i];
-			unsigned bitidx;
-			unsigned phase;
-			if (c->is_input)
-				continue;
+        // mount values for gpio_registers ordered by register,
+        // else flicker by co-running gpio_mux may occur.
+        for (i = 0; i < p->controls_count; i++) {
+            blinkenlight_control_t *c = &p->controls[i];
+            unsigned bitidx;
+            unsigned phase;
+            if (c->is_input)
+                continue;
 
-			// fetch  shift
-			// get averaged values
-			assert(c->fmax) ;
-			historybuffer_get_average_vals(c->history, 1000000 / c->fmax, now_us, /*bitmode*/1);
+            // fetch  shift
+            // get averaged values
+            assert(c->fmax) ;
+            historybuffer_get_average_vals(c->history, 1000000 / c->fmax, now_us, /*bitmode*/1);
 
-			// build the display value from the low-passed bits.
-			// for all display phases :
-			for (phase = 0; phase < GPIOPATTERN_LED_BRIGHTNESS_PHASES; phase++) {
-				unsigned value;
-				_Atomic uint32_t *gpio_ledstatus = // alias of phase value
-					gpiopattern_ledstatus_phases[gpiopattern_ledstatus_phases_writeidx][phase];
-				value = 0;
-				// for all bits :
-				for (bitidx = 0; bitidx < c->value_bitlen; bitidx++) {
-					// mount phase bit
-					unsigned bit_brightness = ((unsigned) (c->averaged_value_bits[bitidx])
-							* (GPIOPATTERN_LED_BRIGHTNESS_LEVELS)) / 256; // from 0.. 255 to
+            // build the display value from the low-passed bits.
+            // for all display phases :
+            for (phase = 0; phase < GPIOPATTERN_LED_BRIGHTNESS_PHASES; phase++) {
+                unsigned value;
+                _Atomic uint32_t *gpio_ledstatus = // alias of phase value
+                    gpiopattern_ledstatus_phases[gpiopattern_ledstatus_phases_writeidx][phase];
+                value = 0;
+                // for all bits :
+                for (bitidx = 0; bitidx < c->value_bitlen; bitidx++) {
+                    // mount phase bit
+                    unsigned bit_brightness = ((unsigned) (c->averaged_value_bits[bitidx])
+                            * (GPIOPATTERN_LED_BRIGHTNESS_LEVELS)) / 256; // from 0.. 255 to
 
-					assert(bit_brightness < GPIOPATTERN_LED_BRIGHTNESS_LEVELS);
-					if (brightness_phase_lookup[bit_brightness][phase])
-						value |= 1 << bitidx;
-				}
-				value2gpio_ledstatus_value(p, c, value, gpio_ledstatus); // fill in to gpio
-			}
-		}
+                    assert(bit_brightness < GPIOPATTERN_LED_BRIGHTNESS_LEVELS);
+                    if (brightness_phase_lookup[bit_brightness][phase])
+                        value |= 1 << bitidx;
+                }
+                value2gpio_ledstatus_value(p, c, value, gpio_ledstatus); // fill in to gpio
+            }
+        }
 
-		// switch pages of double buffer
-		gpiopattern_ledstatus_phases_readidx = !gpiopattern_ledstatus_phases_readidx;
+        // switch pages of double buffer
+        gpiopattern_ledstatus_phases_readidx = !gpiopattern_ledstatus_phases_readidx;
         
-	} // while(! terminate)
+    } // while(! terminate)
     return 0;
 }

@@ -83,6 +83,7 @@ COMMON_SOURCES.c = \
 	$(GPIOSRC) \
 	gpiopattern.c	\
 	print.c	\
+	server_common.c \
 	$(BLINKENLIGHT_API_SOURCES.c)
 
 SERVER11_SOURCES.c = server11.c $(COMMON_SOURCES.c)
@@ -112,6 +113,6 @@ endif
 
 $(OBJDIR)/server8:	$(SERVER8_SOURCES.c) $(SOURCES.h)
 ifneq ($(MAKE_TARGET_ARCH),RPI)
-	$(error PiDP9 server only builds for MAKE_TARGET_ARCH=RPI)
+	$(error PiDP8 server only builds for MAKE_TARGET_ARCH=RPI)
 endif
 	${CC} -o $@ $(CCDEFS) $(SERVER8_SOURCES.c) ${LDFLAGS}

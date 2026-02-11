@@ -48,8 +48,8 @@ extern long gpiopattern_update_period_us;
 
 // LED brightness levels (not changeable without code rework)
 // For N brightness levels there are N-1 display phases
-#define GPIOPATTERN_LED_BRIGHTNESS_LEVELS	32
-#define GPIOPATTERN_LED_BRIGHTNESS_PHASES	(GPIOPATTERN_LED_BRIGHTNESS_LEVELS-1)
+#define GPIOPATTERN_LED_BRIGHTNESS_LEVELS   32
+#define GPIOPATTERN_LED_BRIGHTNESS_PHASES   (GPIOPATTERN_LED_BRIGHTNESS_LEVELS-1)
 
 extern blinkenlight_panel_t *gpiopattern_blinkenlight_panel;
 

@@ -26,7 +26,7 @@
  01-Apr-2016  OV    almost perfect before VCF SE
  15-Mar-2016  JH    display patterns for brightness levels
  16-Nov-2015  JH    acquired from Oscar
- 01-Sep-2023  JB	rewritten for libgpiod
+ 01-Sep-2023  JB    rewritten for libgpiod
  22-Jun-2025  JB    use atomics to avoid races
  17-Oct-2025  JB    changes to use libgpiod instead of direct access to /dev/mem
  02-Jan-2026  JB    configurable knob rotation direction, refactor
@@ -85,104 +85,104 @@ static const int tristate_flags = 0;
 void *
 blink(void *terminate)
 {
-	struct gpiod_chip *chip = NULL;
-	struct gpiod_line_bulk bulk_ledrows = GPIOD_LINE_BULK_INITIALIZER;
-	struct gpiod_line_bulk bulk_rows = GPIOD_LINE_BULK_INITIALIZER;
-	struct gpiod_line_bulk bulk_cols = GPIOD_LINE_BULK_INITIALIZER;
-	int *ledrow_vals = NULL;
-	int *row_vals = NULL;
-	int *col_vals = NULL;
-	struct sched_param sp = {.sched_priority = 98}; // maybe 99, 32, 31?
-	char *cp;
-	int i, j, switchscan;
-	void *exitstatus = (void *)-1;
+    struct gpiod_chip *chip = NULL;
+    struct gpiod_line_bulk bulk_ledrows = GPIOD_LINE_BULK_INITIALIZER;
+    struct gpiod_line_bulk bulk_rows = GPIOD_LINE_BULK_INITIALIZER;
+    struct gpiod_line_bulk bulk_cols = GPIOD_LINE_BULK_INITIALIZER;
+    int *ledrow_vals = NULL;
+    int *row_vals = NULL;
+    int *col_vals = NULL;
+    struct sched_param sp = {.sched_priority = 98}; // maybe 99, 32, 31?
+    char *cp;
+    int i, j, switchscan;
+    void *exitstatus = (void *)-1;
 
-	// open the chip
-	INVOKE_PTR(chip, gpiod_chip_open_by_number(GPIO_NUM));
+    // open the chip
+    INVOKE_PTR(chip, gpiod_chip_open_by_number(GPIO_NUM));
 
-	// allocate the value arrays
-	INVOKE_PTR(ledrow_vals, malloc(num_ledrows * sizeof(int)));
-	INVOKE_PTR(row_vals, malloc(num_rows * sizeof(int)));
-	INVOKE_PTR(col_vals, malloc(num_cols * sizeof(int)));
+    // allocate the value arrays
+    INVOKE_PTR(ledrow_vals, malloc(num_ledrows * sizeof(int)));
+    INVOKE_PTR(row_vals, malloc(num_rows * sizeof(int)));
+    INVOKE_PTR(col_vals, malloc(num_cols * sizeof(int)));
 
-	// configure the LED rows as inputs with no pull (inert)
-	INVOKE(gpiod_chip_get_lines(chip, ledrows, num_ledrows, &bulk_ledrows));
-	INVOKE(gpiod_line_request_bulk_input_flags(&bulk_ledrows, program_name, tristate_flags));
+    // configure the LED rows as inputs with no pull (inert)
+    INVOKE(gpiod_chip_get_lines(chip, ledrows, num_ledrows, &bulk_ledrows));
+    INVOKE(gpiod_line_request_bulk_input_flags(&bulk_ledrows, program_name, tristate_flags));
 
-	// configure the switch rows as inputs with no pull (inert)
-	INVOKE(gpiod_chip_get_lines(chip, rows, num_rows, &bulk_rows));
-	INVOKE(gpiod_line_request_bulk_input_flags(&bulk_rows, program_name, tristate_flags));
+    // configure the switch rows as inputs with no pull (inert)
+    INVOKE(gpiod_chip_get_lines(chip, rows, num_rows, &bulk_rows));
+    INVOKE(gpiod_line_request_bulk_input_flags(&bulk_rows, program_name, tristate_flags));
 
-	// configure the columns as inputs with pull up
-	INVOKE(gpiod_chip_get_lines(chip, cols, num_cols, &bulk_cols));
-	INVOKE(gpiod_line_request_bulk_input_flags(&bulk_cols, program_name, pullup_flags));
+    // configure the columns as inputs with pull up
+    INVOKE(gpiod_chip_get_lines(chip, cols, num_cols, &bulk_cols));
+    INVOKE(gpiod_line_request_bulk_input_flags(&bulk_cols, program_name, pullup_flags));
 
-	// set thread to real time priority -----------------
-	if (pthread_setschedparam(pthread_self(), SCHED_FIFO, &sp))
-		fprintf(stderr, "warning: failed to set RT priority\n");
+    // set thread to real time priority -----------------
+    if (pthread_setschedparam(pthread_self(), SCHED_FIFO, &sp))
+        fprintf(stderr, "warning: failed to set RT priority\n");
 
-	while (!*(_Atomic int *)terminate) {
-		unsigned phase;
+    while (!*(_Atomic int *)terminate) {
+        unsigned phase;
 
-		// display all phases circular
-		for (phase = 0; phase < GPIOPATTERN_LED_BRIGHTNESS_PHASES; phase++) {
-			// each phase must be exact same duration, so include switch scanning here
-			_Atomic uint32_t *gpio_ledstatus =
-				gpiopattern_ledstatus_phases[gpiopattern_ledstatus_phases_readidx][phase];
+        // display all phases circular
+        for (phase = 0; phase < GPIOPATTERN_LED_BRIGHTNESS_PHASES; phase++) {
+            // each phase must be exact same duration, so include switch scanning here
+            _Atomic uint32_t *gpio_ledstatus =
+                gpiopattern_ledstatus_phases[gpiopattern_ledstatus_phases_readidx][phase];
 
-			// configure switch rows as inputs
-			INVOKE(gpiod_line_set_direction_input_bulk(&bulk_rows));
+            // configure switch rows as inputs
+            INVOKE(gpiod_line_set_direction_input_bulk(&bulk_rows));
 
-			for (int i = 0; i < num_ledrows; i++)
-				ledrow_vals[i] = 0;
+            for (int i = 0; i < num_ledrows; i++)
+                ledrow_vals[i] = 0;
 
-			// light up each row of LEDs
-			// drive one LED row low for each set of columns
-			for (i = 0; i < num_ledrows; i++) {
-				// light up the next row with the matching column values
-				for (j = 0; j < num_cols; j++)
-					col_vals[j] = !(gpio_ledstatus[i] & (1 << j));
-				INVOKE(gpiod_line_set_direction_output_bulk(&bulk_cols, col_vals));
-				ledrow_vals[i] = 1;
-				INVOKE(gpiod_line_set_direction_output_bulk(&bulk_ledrows, ledrow_vals));
+            // light up each row of LEDs
+            // drive one LED row low for each set of columns
+            for (i = 0; i < num_ledrows; i++) {
+                // light up the next row with the matching column values
+                for (j = 0; j < num_cols; j++)
+                    col_vals[j] = !(gpio_ledstatus[i] & (1 << j));
+                INVOKE(gpiod_line_set_direction_output_bulk(&bulk_cols, col_vals));
+                ledrow_vals[i] = 1;
+                INVOKE(gpiod_line_set_direction_output_bulk(&bulk_ledrows, ledrow_vals));
 
-				usleep(intervl);
+                usleep(intervl);
 
-				// turn off the row
-				ledrow_vals[i] = 0;
-				INVOKE(gpiod_line_set_direction_output_bulk(&bulk_ledrows, ledrow_vals));
-				// usleep(10); /* probably not needed due to syscall overhead with libgpiod */
-			}
+                // turn off the row
+                ledrow_vals[i] = 0;
+                INVOKE(gpiod_line_set_direction_output_bulk(&bulk_ledrows, ledrow_vals));
+                // usleep(10); /* probably not needed due to syscall overhead with libgpiod */
+            }
 
-			// prepare to read switches
-			// configure LED rows and columns as inputs
-			INVOKE(gpiod_line_set_direction_input_bulk(&bulk_ledrows));
-			INVOKE(gpiod_line_set_direction_input_bulk(&bulk_cols));
-			
-			for (i = 0; i < num_rows; i++)
-				row_vals[i] = 1;
-			for (i = 0; i < num_rows; i++) {
-				row_vals[i] = 0;
-				INVOKE(gpiod_line_set_direction_output_bulk(&bulk_rows, row_vals));
-				usleep(1);
-				INVOKE(gpiod_line_get_value_bulk(&bulk_cols, col_vals));
-				switchscan = 0;
-				for (j = 0; j < num_cols; j++)
-					switchscan |= col_vals[j] << j;
-				row_vals[i] = 1;
-				switch_fixup(i, switchscan);
+            // prepare to read switches
+            // configure LED rows and columns as inputs
+            INVOKE(gpiod_line_set_direction_input_bulk(&bulk_ledrows));
+            INVOKE(gpiod_line_set_direction_input_bulk(&bulk_cols));
+            
+            for (i = 0; i < num_rows; i++)
+                row_vals[i] = 1;
+            for (i = 0; i < num_rows; i++) {
+                row_vals[i] = 0;
+                INVOKE(gpiod_line_set_direction_output_bulk(&bulk_rows, row_vals));
+                usleep(1);
+                INVOKE(gpiod_line_get_value_bulk(&bulk_cols, col_vals));
+                switchscan = 0;
+                for (j = 0; j < num_cols; j++)
+                    switchscan |= col_vals[j] << j;
+                row_vals[i] = 1;
+                switch_fixup(i, switchscan);
 
-				gpio_switchstatus[i] = switchscan;
-			}
-		}
-	}
-	gpiod_line_set_direction_input_bulk(&bulk_rows);
-	exitstatus = NULL;
+                gpio_switchstatus[i] = switchscan;
+            }
+        }
+    }
+    gpiod_line_set_direction_input_bulk(&bulk_rows);
+    exitstatus = NULL;
 
 out:
-	RELEASE(chip, gpiod_chip_close);
-	RELEASE(ledrow_vals, free);
-	RELEASE(row_vals, free);
-	RELEASE(col_vals, free);
-	return exitstatus;
+    RELEASE(chip, gpiod_chip_close);
+    RELEASE(ledrow_vals, free);
+    RELEASE(row_vals, free);
+    RELEASE(col_vals, free);
+    return exitstatus;
 }

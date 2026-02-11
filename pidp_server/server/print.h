@@ -25,31 +25,29 @@
    06-Jan-2026  JB      refactored into pidp_server, Windows support removed
 */
 
-#ifndef LOGGING_H_
-#define LOGGING_H_
+#ifndef PRINT_H_
+#define PRINT_H_
 
 #include <stdio.h>
 #include <syslog.h>
 // use these message levels:
-// 	LOG_EMERG	system is unusable
-//	LOG_ALERT	action must be taken immediately
-//	LOG_CRIT	critical conditions
-// 	LOG_ERR		error conditions
-//	LOG_WARNING	warning conditions
-//	LOG_NOTICE	normal, but significant, condition
-//	LOG_INFO	informational message
-//	LOG_DEBUG	debug-level message
+//  LOG_EMERG   system is unusable
+//  LOG_ALERT   action must be taken immediately
+//  LOG_CRIT    critical conditions
+//  LOG_ERR     error conditions
+//  LOG_WARNING warning conditions
+//  LOG_NOTICE  normal, but significant, condition
+//  LOG_INFO    informational message
+//  LOG_DEBUG   debug-level message
 
-#if !defined(LOGGING_C_)
 extern int print_level; // print call of remote procedures
-#endif
 
 /*
  * Output into stderr or logfile
  */
-void print_open(int use_syslog) ;
-void print(int level, const char* format, ...);
-void print_memdump(int level, char *info, unsigned start_addr, unsigned count, unsigned char *data) ;
-void print_close(void) ;
+extern void print_open(int use_syslog) ;
+extern void print(int level, const char* format, ...);
+extern void print_memdump(int level, char *info, unsigned start_addr, unsigned count, unsigned char *data) ;
+extern void print_close(void) ;
 
-#endif /* LOGGING_H_ */
+#endif /* PRINT_H_ */
