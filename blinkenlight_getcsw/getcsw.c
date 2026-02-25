@@ -38,7 +38,8 @@ struct panel_config {
     { "11/70", "SR" },
     { "11/40", "SR" },
     { "11/20", "SR" },
-    { "PDP8I", "SR" }
+    { "PDP8I", "SR" },
+    { "PDP10-KA10", "SR" }
 };
 
 #define _countof(x) (sizeof (x) / sizeof *(x))
@@ -76,7 +77,7 @@ main(int argc, const char *const *argv)
     char radix = 'u';
     int width = 0;
     int zerofill = 0;
-    unsigned long bitmask = ~0uL;
+    uint64_t bitmask = UINT64_MAX;
     char format[16];
     int i;
 

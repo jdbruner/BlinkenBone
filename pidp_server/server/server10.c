@@ -1,4 +1,4 @@
-/* main.c: Blinkenlight API server to run on "PiDP8" replica
+/* server10.c: Blinkenlight API server to run on "PiDP10" replica
 
  Copyright (c) 2015-2016, Joerg Hoppe
  j_hoppe@t-online.de, www.retrocmp.com
@@ -20,7 +20,7 @@
  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-
+ 13-Feb-2026  JB    new main program to support PiDP10
  06-Jan-2026  JB    changes to use libgpiod instead of direct access to /dev/mem
  22-Mar-2016  JH    allow a control value to be distributed over several hw registers
  15-Mar-2016  JH    V 1.3 Low-pass for SimH output, display patterns for brightness levels
@@ -31,20 +31,16 @@
 
 
  Blinkenlight API server, which controls lamps and switches
- on the Raspberry based "PiPDP8 replica from Oscar Vermeulen.
+ on the Raspberry based "PiPDP10 replica from Oscar Vermeulen.
 
  Like the generic blinkenlightd,
- - PiDP8 controls are fix wired in (defined in panel_controls[]), no config file
- - Hardware interface to Raspberry is original "gpio.c" from Oscar
-
- DEC names for switches and LEDs : see
- PDP-8 FAMILY SYSTEM USER'S GUIDE
- dec-08-ngcb-d-.pdf, pdf;  page INTRO-5, pdpf page 19
+ - PiDP10 controls are fix wired in (defined in panel_controls[]), no config file
+ - Hardware interface to Raspberry is "gpio_enc.c"
 
 
  Timing & CPU load:
  There are 2 threads:
- a) the LED MUX loop, in gpio.c, long intervl
+ a) the LED MUX loop, in gpio_enc.c, long intervl
  b) the averaging loop in gpiopattern.c
  (and SimH is the 3rd process running)
 
@@ -82,88 +78,106 @@
 /*
  * Panel definition strings
  */
-const char PANEL_NAME[] = "PDP8I";
-const char PANEL_DESCRIPTION[] = "PIDP8 panel";
-const char SERVERNAME[] = "pidp8panel";
-const char VERSION[] = "2.1.0";
+const char PANEL_NAME[] = "PDP10-KA10";
+const char PANEL_DESCRIPTION[] = "PIDP10 panel";
+const char SERVERNAME[] = "pidp10panel";
+const char VERSION[] = "1.0.0";
 
 /*
  * GPIO row and column definitions
  */
 #define _countof(x) (sizeof x / sizeof x[0])
-const unsigned ledrows[] = { 20, 21, 22, 23, 24, 25, 26, 27 };           // LED rows
-const unsigned num_ledrows = _countof(ledrows);                          // number of LED rows
-const unsigned rows[] = { 16, 17, 18 };                                  // switch rows
-const unsigned num_rows = _countof(rows);                                // number of switch rows
-const unsigned cols[] = { 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 15, 14 };    // columns
-const unsigned num_cols = _countof(cols);                                // number of columns
+
+const unsigned row_encoder[] = { 4, 17, 27 };                           // pins for row number
+const unsigned num_encoder = _countof(row_encoder);                     // number of encoded pins
+const unsigned row_io = 22;                                             // pin for row type 
+
+const unsigned num_ledrows = 7;                                         // number of LED rows
+const unsigned num_rows = 5;                                            // number of switch rows
+
+const unsigned cols[] = { 21,20,16,12,7,8,25,24,23,18,10,9,11,5,6,13,19,26 }; // column pins
+const unsigned num_cols = _countof(cols);                               // number of columns
 
 const control_slice_info_t panel_controls[] = {
-    SWITCH_SLICE("Start", 0, 1, 2, 11), // 2, 0x800
-    SWITCH_SLICE("Load Add", 0, 1, 2, 10), // 2, 0x400
-    SWITCH_SLICE_ACTIVE_HIGH("Dep", 0, 1, 2, 9), // 2, 0x200
-    SWITCH_SLICE("Exam", 0, 1, 2, 8), // 2, 0x100
-    SWITCH_SLICE("Cont", 0, 1, 2, 7), // 2, 0x80
-    SWITCH_SLICE("Stop", 0, 1, 2, 6), // 2, 0x40
-    SWITCH_SLICE("Sing Step", 0, 1, 2, 5), // 2, 0x20
-    SWITCH_SLICE("Sing Inst", 0, 1, 2, 4), // 2, 0x10
-    SWITCH_SLICE("SR", 0, 12, 0, 0), // 0, 0xfff
-    SWITCH_SLICE("DF", 0, 3, 1, 9), // 1, 0xe00
-    SWITCH_SLICE("IF", 0, 3, 1, 6), // 1, 0x1c0
-    SWITCH_SLICE("POWER", 0, 1, 0, 0), // dummy, always 1
-    SWITCH_SLICE("PANEL LOCK", 0, 1, 0, 0), // dummy, always 0
-    LED_SLICE("Program Counter", 0, 7, 0, 0), // bits 0:6
-    LED_SLICE("Program Counter", 7, 5, 0, 7), // bits 7:11
-    LED_SLICE("Inst Field", 0, 3, 7, 6), // 7, 0x1c0
-    LED_SLICE("Data Field", 0, 3, 7, 9), // 7, 0xe00
-    LED_SLICE("Memory Address", 0, 12, 1, 0), // 1, 0xfff
-    LED_SLICE("Memory Buffer", 0, 12, 2, 0), // 2, 0xfff
-    LED_SLICE("Accumulator", 0, 12, 3, 0), // 3, 0xfff
-    LED_SLICE("Link", 0, 1, 7, 5), // 7, 0x20
-    LED_SLICE("Multiplier Quotient", 0, 12, 4, 0), // 4, 0xfff
-    LED_SLICE("And", 0, 1, 5, 11), // 5, 0x800
-    LED_SLICE("Tad", 0, 1, 5, 10), // 5, 0x400
-    LED_SLICE("Isz", 0, 1, 5, 9), // 5, 0x200
-    LED_SLICE("Dca", 0, 1, 5, 8), // 5, 0x100
-    LED_SLICE("Jms", 0, 1, 5, 7), // 5, 0x80
-    LED_SLICE("Jmp", 0, 1, 5, 6), // 5, 0x40
-    LED_SLICE("Iot", 0, 1, 5, 5), // 5, 0x20
-    LED_SLICE("Opr", 0, 1, 5, 4), // 5, 0x10
-    LED_SLICE("Fetch", 0, 1, 5, 3), // 5, 0x8
-    LED_SLICE("Execute", 0, 1, 5, 2), // 5, 0x4
-    LED_SLICE("Defer", 0, 1, 5, 1), // 5, 0x2
-    LED_SLICE("Word Count", 0, 1, 5, 0), // 5, 0x1
-    LED_SLICE("Current Address", 0, 1, 6, 11), // 6, 0x800
-    LED_SLICE("Break", 0, 1, 6, 10), // 6, 0x400
-    LED_SLICE("Ion", 0, 1, 6, 9), // 6, 0x200
-    LED_SLICE("Pause", 0, 1, 6, 8), // 6, 0x100
-    LED_SLICE("Run", 0, 1, 6, 7), // 6, 0x80
-    LED_SLICE("Step Counter", 0, 5, 6, 2), // 6,  0x7c
+    SWITCH_SLICE("SR", 0, 18, 0, 0),        // 0, 0777777
+    SWITCH_SLICE("SR", 18, 18, 1, 0),       // 1, 0777777
+
+    SWITCH_SLICE("MA", 0, 18, 2, 0),        // 2, 0777777
+
+    SWITCH_SLICE("EXAM_NEXT", 0, 1, 3, 0),  // 3, 0000001
+    SWITCH_SLICE("EXAM_THIS", 0, 1, 3, 1),  // 3, 0000002
+    SWITCH_SLICE("XCT", 0, 1, 3, 2),        // 3, 0000004
+    SWITCH_SLICE("RESET", 0, 1, 3, 3),      // 3, 0000010
+    SWITCH_SLICE("STOP", 0, 1, 3, 4),       // 3, 0000020
+    SWITCH_SLICE("CONT", 0, 1, 3, 5),       // 3, 0000040
+    SWITCH_SLICE("START", 0, 1, 3, 6),      // 3, 0000100
+    SWITCH_SLICE("READ_IN", 0, 1, 3, 7),    // 3, 0000200
+    SWITCH_SLICE("DEP_NEXT", 0, 1, 3, 8),   // 3, 0000400
+    SWITCH_SLICE("DEP_THIS", 0, 1, 3, 9),   // 3, 0001000
+
+    SWITCH_SLICE("ADR_BRK", 0, 1, 4, 0),    // 4, 0000001
+    SWITCH_SLICE("ADR_STOP", 0, 1, 4, 1),   // 4, 0000002
+    SWITCH_SLICE("WRITE", 0, 1, 4, 2),      // 4, 0000004
+    SWITCH_SLICE("DATA_FETCH", 0, 1, 4, 3), // 4, 0000010
+    SWITCH_SLICE("INST_FETCH", 0, 1, 4, 4), // 4, 0000020
+    SWITCH_SLICE("REP", 0, 1, 4, 5),        // 4, 0000040
+    SWITCH_SLICE("NXM_STOP", 0, 1, 4, 6),   // 4, 0000100
+    SWITCH_SLICE("PAR_STOP", 0, 1, 4, 7),   // 4, 0000200
+    SWITCH_SLICE("SING_CYCL", 0, 1, 4, 8),  // 4, 0000400
+    SWITCH_SLICE("SING_INST", 0, 1, 4, 9),  // 4, 0001000
+
+    LED_SLICE("MB", 0, 18, 0, 0),           // 0, 0777777
+    LED_SLICE("MB", 18, 18, 1, 0),          // 1, 0777777
+
+    LED_SLICE("INSTR", 0, 18, 2, 0),        // 2, 0777777
+    LED_SLICE("INSTR", 18, 18, 3, 0),       // 3, 0777777
+
+#if notdef
+    // component pieces of the instruction row
+    LED_SLICE("AB", 0, 18, 2, 0),           // 2, 0777777
+
+    LED_SLICE("IX", 0, 4, 3, 0),            // 3, 0000017
+    LED_SLICE("IND", 0, 1, 3, 4),           // 3, 0000020
+    LED_SLICE("AC", 0, 4, 3, 5),            // 3, 0000740
+    LED_SLICE("IR", 0, 9, 3, 9),            // 3, 0777000
+#endif
+
+    LED_SLICE("PC", 0, 18, 4, 0),           // 4, 0777777
+
+    LED_SLICE("PI_ENB", 0, 7, 5, 0),        // 5, 0000177
+    LED_SLICE("PI_IOB", 0, 7, 5, 7),        // 5, 0037600
+    LED_SLICE("PROG_STOP", 0, 1, 5, 14),    // 5, 0040000
+    LED_SLICE("USER_MODE", 0, 1, 5, 15),    // 5, 0100000
+    LED_SLICE("MEM_STOP", 0, 1, 5, 16),     // 5, 0200000
+    LED_SLICE("POWER", 0, 1, 5, 17),        // 5, 0400000
+
+    LED_SLICE("PI_REQ", 0, 7, 6, 0),        // 6, 0000177
+    LED_SLICE("PI_PRO", 0, 7, 6, 7),        // 6, 0037600
+    LED_SLICE("RUN", 0, 1, 6, 14),          // 6, 0040000
+    LED_SLICE("PI_ON", 0, 1, 6, 15),        // 6, 0100000
+    LED_SLICE("PI", 0, 1,6, 16),            // 6, 0200000
+    LED_SLICE("MI", 0, 1, 6, 17),           // 6, 0400000
+
     { NULL }
 };
 
 /*
- *  PiDP8 controls that require special handling
+ *  PiDP10 controls that require special handling
+ *  (none)
  */
-blinkenlight_control_t *switch_POWER, *switch_PANEL_LOCK;
+// static blinkenlight_control_t
 
 /*
  *  RPC server callbacks:
- *  here conversion between PiDP8 gpio and Blinkenlight API is done!
+ *  here conversion between PiDP10 gpio and Blinkenlight API is done!
  */
 
 // Special handling of control when its value is requested by the client
 static int
-pidp8_blinkenlight_api_panel_get_controlvalue(blinkenlight_panel_t *p,
+pidp10_blinkenlight_api_panel_get_controlvalue(blinkenlight_panel_t *p,
     blinkenlight_control_t *c)
 {
-    if (c == switch_POWER)
-        c->value = 1;   // always send "power" switch as ON
-    else if (c == switch_PANEL_LOCK)
-        c->value = 0;   // always send "panel lock" switch as OFF
-    else
-        return 0;
-    return 1;
+    return 0;
 }
 
 /*
@@ -172,7 +186,7 @@ pidp8_blinkenlight_api_panel_get_controlvalue(blinkenlight_panel_t *p,
  * NULL entries are replaced with pointers to the respective defaults
  */
 blinkenlight_callback_handlers_t blinkenlight_callback_handlers = {
-    .panel_get_controlvalue = pidp8_blinkenlight_api_panel_get_controlvalue
+//  .panel_get_controlvalue = pidp10_blinkenlight_api_panel_get_controlvalue
     // all others are NULL (default behavior)
 };
 
@@ -190,8 +204,7 @@ panel_creation_fixup(blinkenlight_panel_t *p)
         int is_input;
     };
     static const struct special_controls special_controls[] = {
-        { "POWER", &switch_POWER, 1 },
-        { "PANEL LOCK", &switch_PANEL_LOCK, 1 },
+        // { "EXAMPLE", &switch_EXAMPLE, 1 },
         { NULL }
     };
     const struct special_controls *spc;
@@ -211,7 +224,7 @@ static
 void help(void)
 {
     fprintf(stderr, "\n");
-    fprintf(stderr, "%s %s - Blinkenlight RPC server for PiDP8 \n",
+    fprintf(stderr, "%s %s - Blinkenlight RPC server for PiDP10 \n",
     program_name, VERSION);
     fprintf(stderr, "  (compiled " __DATE__ " " __TIME__ ")\n");
     fprintf(stderr, "\n");
@@ -219,9 +232,9 @@ void help(void)
     fprintf(stderr, "%s [-b] [-v] [-t]\n", program_name);
     fprintf(stderr, "\n");
     fprintf(stderr, "-b               : background operation: print to syslog (view with dmesg)\n");
-    fprintf(stderr, "                  default output is stderr\n");
+    fprintf(stderr, "                   default output is stderr\n");
     fprintf(stderr, "-v               : verbose: tell what I'm doing\n");
-    fprintf(stderr, "-t               : Test mode\n");
+    fprintf(stderr, "-t               : test mode\n");
     fprintf(stderr, "\n");
 }
 
@@ -275,7 +288,7 @@ parse_commandline(int argc, char **argv)
 }
 
 /*
- * No special handling required for LEDs on the PiDP8
+ * No special handling required for LEDs on the PiDP10
  */
 int
 led_fixup(blinkenlight_panel_t *p, blinkenlight_control_t *c, int *panel_mode_ptr,
@@ -285,7 +298,7 @@ led_fixup(blinkenlight_panel_t *p, blinkenlight_control_t *c, int *panel_mode_pt
 }
 
 /*
- * No special handling required for switches on the PiDP8
+ * No special handling required for switches on the PiDP10
  */
 void
 switch_fixup(int row, int switchscan)

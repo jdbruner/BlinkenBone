@@ -50,7 +50,7 @@ $(SERVER11): FRC
 # this doesn't change often, so only build it if it is missing
 $(PANELSIM):
 	@echo $@ ...
-	cd $PANELSIMDIR ; ant -f build.xml compile jar
+	cd $(PANELSIMDIR) ; ant -f build.xml compile jar
 
 # force all - because the dependencies are evaluated in the sub-makes
 FRC:

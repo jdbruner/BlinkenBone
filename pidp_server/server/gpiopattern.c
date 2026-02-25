@@ -168,7 +168,7 @@ static char brightness_phase_lookup[GPIOPATTERN_LED_BRIGHTNESS_LEVELS][GPIOPATTE
  * control value maybe a pattern for a brightness phase of the value
  */
 static void value2gpio_ledstatus_value(blinkenlight_panel_t *p, blinkenlight_control_t *c,
-    uint32_t value, _Atomic uint32_t *gpio_ledstatus)
+    uint64_t value, _Atomic uint32_t *gpio_ledstatus)
 {
     unsigned i_register_wiring;
     int panel_mode = p->mode ;
@@ -199,7 +199,7 @@ static void value2gpio_ledstatus_value(blinkenlight_panel_t *p, blinkenlight_con
             i_register_wiring++) {
         blinkenlight_control_blinkenbus_register_wiring_t *bbrw;
         unsigned regval; // value of current register
-        unsigned bitfield; // bits moutnend into current register
+        unsigned bitfield; // bits mounted into current register
         // for all registers assigned whole or in part to control
         bbrw = &(c->blinkenbus_register_wiring[i_register_wiring]);
 
@@ -259,7 +259,7 @@ void *gpiopattern_update_leds(void *terminate)
             // build the display value from the low-passed bits.
             // for all display phases :
             for (phase = 0; phase < GPIOPATTERN_LED_BRIGHTNESS_PHASES; phase++) {
-                unsigned value;
+                uint64_t value;
                 _Atomic uint32_t *gpio_ledstatus = // alias of phase value
                     gpiopattern_ledstatus_phases[gpiopattern_ledstatus_phases_writeidx][phase];
                 value = 0;
@@ -271,7 +271,7 @@ void *gpiopattern_update_leds(void *terminate)
 
                     assert(bit_brightness < GPIOPATTERN_LED_BRIGHTNESS_LEVELS);
                     if (brightness_phase_lookup[bit_brightness][phase])
-                        value |= 1 << bitidx;
+                        value |= (uint64_t)1 << bitidx;
                 }
                 value2gpio_ledstatus_value(p, c, value, gpio_ledstatus); // fill in to gpio
             }

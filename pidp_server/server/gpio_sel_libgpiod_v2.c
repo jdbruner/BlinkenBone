@@ -1,4 +1,5 @@
-/* gpio.c: the real-time process that handles multiplexing
+/* gpio_sel_libgpiod_v2.c: the real-time process that handles multiplexing
+   This version uses direct selection of rows (dedicated GPIOs)
    This version uses libgpiod-dev v2
 
  Copyright (c) 2015-2023, Oscar Vermeulen, Joerg Hoppe, John D. Bruner

@@ -422,7 +422,7 @@ parse_commandline(int argc, char **argv)
  */
 int
 led_fixup(blinkenlight_panel_t *p, blinkenlight_control_t *c, int *panel_mode_ptr,
-    uint32_t value, _Atomic uint32_t *gpio_ledstatus)
+    uint64_t value, _Atomic uint32_t *gpio_ledstatus)
 {
 
     int panel_mode = p->mode;

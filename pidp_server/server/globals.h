@@ -133,24 +133,26 @@ extern void panel_creation_fixup(blinkenlight_panel_t *p);
  * There are two types of row selection:
  *   - direct (each switch row and led row has its own GPIO)
  *       rows defines the GPIO pins for the switch rows
- *       num_rows is the number of switch rows
  *       ledrows defines the GPIO pins for the LED rows
- *       num_ledrows is the number of LED rows
  *   - encoded (the row number is encoded across three GPIO pins)
  *       row_encoder defines the GPIO pins for each bit of the row number
- * 
- * If encoded is used, num_rows and num_ledrows should be 0.
+ *       row_io defines the GPIO pin that selects switch rows or led rows
  * 
  * Regardless of the row encoding:
+ *       num_rows is the number of switch rows
+ *       num_ledrows is the number of LED rows
  *       cols defines the GPIO pins for the columns
  *       num_cols is the number of columns
  */
 extern const unsigned ledrows[];     // LED rows
-extern const unsigned num_ledrows;   // number of LED rows
 extern const unsigned rows[];        // switch rows
-extern const unsigned num_rows;      // number of switch rows
 
 extern const unsigned row_encoder[]; // pins for each bit of row number
+extern const unsigned row_io;        // pin to select row type
+
+extern const unsigned num_rows;      // number of switch rows
+extern const unsigned num_ledrows;   // number of LED rows
+extern const unsigned num_encoder;   // number of pins used for encoder
 
 extern const unsigned cols[];        // columns
 extern const unsigned num_cols;      // number of columns
@@ -171,7 +173,7 @@ extern const unsigned num_cols;      // number of columns
  */
 extern void switch_fixup(int row, int switchscan);
 extern int led_fixup(blinkenlight_panel_t *p, blinkenlight_control_t *c,
-   int *panel_mode_ptr, uint32_t value, _Atomic uint32_t *gpio_ledstatus);
+   int *panel_mode_ptr, uint64_t value, _Atomic uint32_t *gpio_ledstatus);
 
 /*
  * other
