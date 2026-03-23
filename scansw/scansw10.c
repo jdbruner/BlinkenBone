@@ -20,7 +20,6 @@
 #include <errno.h>
 #include <gpiolib.h>
 typedef uint64_t uint64;
-#include "scansw10.h"
 
 // the interface variables shared with other threads
 volatile u_int32_t gpio_switchstatus[5] ; // bitfields: 5 rows of up to 18 switches

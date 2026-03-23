@@ -1,0 +1,14 @@
+[Unit]
+Description=PiDP10 simulation
+Wants=rpcbind.service pidp10panel pidp10cbridge pidp10tv11
+After=rpcbind.service pidp10panel pidp10cbridge pidp10tv11
+
+[Install]
+WantedBy=multi-user.target
+
+[Service]
+Type=simple
+ExecStart=screen -D -m -S pidp10 /opt/pidp10/bin/pidp.sh -x10 -r
+WorkingDirectory=/opt/pidp10
+User=pidp10
+Group=pidp10

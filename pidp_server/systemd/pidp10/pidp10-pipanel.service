@@ -1,0 +1,16 @@
+[Unit]
+Description=PiDP10 simulation
+Wants=pidp10cbridge pidp10tv11
+After=pidp10cbridge pidp10tv11
+
+[Install]
+WantedBy=multi-user.target
+
+[Service]
+Type=simple
+ExecStart=screen -D -m -S pidp10 /opt/pidp10/bin/pidp.sh -x10 -p
+WorkingDirectory=/opt/pidp10
+User=pidp10
+Group=pidp10
+SupplementaryGroups=gpio
+LimitRTPRIO=99:99

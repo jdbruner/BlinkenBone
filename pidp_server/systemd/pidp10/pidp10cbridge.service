@@ -1,0 +1,12 @@
+[Unit]
+Description=PiDP10 Chaosnet bridge service
+
+[Install]
+WantedBy=multi-user.target
+
+[Service]
+Type=simple
+ExecStart=/opt/pidp10/bin/cbridge -c /opt/pidp10/bin/cbridge.conf
+WorkingDirectory=/opt/pidp10
+User=pidp10
+Group=pidp10

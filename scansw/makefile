@@ -1,15 +1,12 @@
 #
-# Platform check - this only builds on Raspberry Pi
-#
-ifeq (,$(wildcard /usr/bin/raspi-config))
-  $(error panel servers only build on Raspberry Pi)
-endif
-
-#
-# Build scansw for PiDP10
+# Build scansw
 #
 OBJDIR=../../BIN
-TARGETS = $(OBJDIR)/scansw10
+TARGETS = $(OBJDIR)/scansw00
+ifneq (,$(wildcard /usr/bin/raspi-config))
+  TARGETS += $(OBJDIR)/scansw10
+endif
+
 all:    $(TARGETS)
 
 #
@@ -21,7 +18,8 @@ else
 CFLAGS = -ggdb3 -O0 -Wall -Wextra
 endif
 
-LDFLAGS = -lgpiolib
+LDFLAGS =
+GPIOLIB = -lgpiolib
 
 clean:
 	rm -f core *.o $(TARGETS)
@@ -29,7 +27,8 @@ clean:
 install:
 	# no-op for now
 
-scansw10.o:	scansw10.c scansw10.h
+$(OBJDIR)/scansw00:	scansw00.o
+	${CC} -o $@ $^ ${LDFLAGS}
 
 $(OBJDIR)/scansw10:	scansw10.o
-	${CC} -o $@ $^ ${LDFLAGS}
+	${CC} -o $@ $^ ${LDFLAGS} ${GPIOLIB}

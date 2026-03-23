@@ -40,6 +40,11 @@ public abstract class rpc_blinkenlight_apiServerStub extends OncRpcServerStub im
            throws OncRpcException, IOException {
         if ( version == 1 ) {
             switch ( procedure ) {
+            case 0: {
+                call.retrieveCall(XdrVoid.XDR_VOID);
+                call.reply(XdrVoid.XDR_VOID);
+                break;
+            }
             case 1: {
                 call.retrieveCall(XdrVoid.XDR_VOID);
                 rpc_blinkenlight_api_getinfo_res result$ = RPC_BLINKENLIGHT_API_GETINFO_1();

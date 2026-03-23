@@ -1,6 +1,6 @@
 #! /bin/sh
 #
-# Build everything. Unlike the original BlinkenBone project, this
+# Build everything for PiDP11. Unlike the original BlinkenBone project, this
 # only builds on the local machine (no cross-compiling).
 #
 # This script ensures the necessary (apt) package dependencies are
@@ -23,4 +23,4 @@ if [ ! -e $APTDONEFILE ]; then
     touch $APTDONEFILE
 fi
 
-exec make 
+exec make pidp11
