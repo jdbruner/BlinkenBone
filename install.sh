@@ -127,6 +127,7 @@ fi
 #
 mkdir -p -m 755 ${PIDP_OPT}
 install -m 755 ${SRC_BIN_DIR}/pidp.sh ${PIDP_OPT_BIN}
+install -m 755 ${SRC_BIN_DIR}/get_selections.sh ${PIDP_OPT_BIN}
 for exe in ${PIDP_EXES}; do
     install -m 755 ${SIMH_BIN}/${exe} ${PIDP_OPT_BIN}
 done
@@ -144,6 +145,7 @@ fi
 # Otherwise, create an initial version (with idled as default)
 #
 if [[ ! -d ${PIDP_OPT_SYSTEMS} ]]; then
+    cp ${SRC_SYSTEMS_DIR}/realcons.ini ${PIDP_OPT_SYSTEMS}
     cp -r ${SRC_PIDP_SYSTEMS_DIR} ${PIDP_OPT_SYSTEMS}
     ln -s idled ${PIDP_OPT_SYSTEMS}/default
 fi

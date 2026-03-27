@@ -1,6 +1,0 @@
-csw=0000 dir=default
-csw=0001 dir=its desc=MIT\ ITS
-csw=0002 dir=tops10-603 desc=TOPS-10
-csw=0010 dir=idled desc=Simple\ idle\ LEDS
-csw=0011 dir=hills-blinky desc=Rich\ idle\ LEDS
-csw=0020 dir=tops20 cpu=pdp10-kl desc=TOPS-20

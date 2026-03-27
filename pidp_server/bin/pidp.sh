@@ -124,7 +124,7 @@ fi
 while
 	# select system using low 12 bits of data switches
 	eval declare -A selections=(
-	    $(bash ${PIDP_SYSTEMS}/get_selections.sh -c${DEFAULT_CPU} -d -v |
+	    $(bash ${PIDP_BIN}/get_selections.sh -c${DEFAULT_CPU} -d -v ${PIDP_SYSTEMS} |
 	    sed -e 's/csw="\([^"]*\)"\(.*\)/[\1]=@\2@/' \
 		-e "s/@/'/g" \
 		-e 's/ \([a-zA-Z]*\)=\([^ 	]*\)/ [\1]=\2/g' ))
