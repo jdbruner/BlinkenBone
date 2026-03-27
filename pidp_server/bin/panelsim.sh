@@ -60,6 +60,19 @@ PIDP_JAR=${PIDP_BIN}/panelsim_all.jar
 
 if [ -n "$VERBOSE" ]; then set -x ; fi
 
+# panel server requires X11
+if [ -z "${DISPLAY}" ]; then
+	echo "Panel server requires a graphical environment (X11/Wayland)"
+	exit 1
+fi
+
+# check whether a panel server (either PiDP or Java) is already running
+if rpcinfo -T tcp localhost 99 1 > /dev/null 2>&1 ; then
+	echo "Only one panel server can be running at a time, and one is"
+	echo "already active"
+	exit 1
+fi
+
 # start the Java panel server
 java -classpath ${PIDP_JAR} ${JAVA_APP} ${JAVA_ARGS} &
 PANELSIM_PID="$!"

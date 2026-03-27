@@ -50,7 +50,7 @@ PIDP10 = $(PDP10_TARGETS)
 
 ifneq (,$(wildcard /usr/bin/raspi-config))
   PIDP11 += $(SERVER11)
-  PIDP10 += $(SERVER10) $(SCANSW10)
+  PIDP10 += $(PDP10PANEL_TARGETS) $(SERVER10) $(SCANSW10)
   PDP10_TARGETS += $(PDP10PANEL_TARGETS)
 endif
 
