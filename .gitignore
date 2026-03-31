@@ -21,7 +21,6 @@ Thumbs.db
 *.ilk
 *.log
 [Bb]in
-!**/pidp_server/bin
 [Dd]ebug*/
 !debug.h
 *.lib

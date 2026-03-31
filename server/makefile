@@ -8,7 +8,7 @@ endif
 #
 # Build panel servers for PiDP11, PiDP10, and PiDP8
 #
-OBJDIR=../../../BIN
+OBJDIR=../../BIN
 TARGETS = $(OBJDIR)/server11 $(OBJDIR)/server10 $(OBJDIR)/server8
 all:    $(TARGETS)
 
@@ -63,8 +63,8 @@ CCDEFS= \
 #
 # Blinkenlight interface sources
 #
-BLINKENLIGHT_COMMON_DIR=../../common
-BLINKENLIGHT_API_DIR=../../blinkenlight_api
+BLINKENLIGHT_COMMON_DIR=../common
+BLINKENLIGHT_API_DIR=../blinkenlight_api
 # *_svc, *_xdr and api.h sources must be created with rpcgen
 BLINKENLIGHT_API_SOURCES.c = \
 	$(BLINKENLIGHT_API_DIR)/blinkenlight_panels.c	\

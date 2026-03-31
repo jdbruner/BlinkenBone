@@ -26,7 +26,7 @@ PANELSIMDIR = javapanelsim
 PANELSIM = $(PANELSIMDIR)/panelsim_all.jar
 
 # REALCONS servers
-SERVERDIR = pidp_server/server
+SERVERDIR = server
 SERVER10 = $(OBJDIR)/server10
 SERVER11 = $(OBJDIR)/server11
 
