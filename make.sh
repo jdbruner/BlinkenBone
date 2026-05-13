@@ -14,7 +14,7 @@ VERBOSE=
 
 PACKAGES="ant default-jdk rpcbind screen \
   libgpiod-dev libtirpc-dev libsdl2-dev libpcap-dev libreadline-dev \
-  libpcre2-dev libedit-dev libpng-dev libvdeplug-dev"
+  libpcre2-dev libedit-dev libpng-dev libvdeplug-dev libgpiolib-dev"
 
 while getopts ":vx:" opt
 do
