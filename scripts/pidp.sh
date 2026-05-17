@@ -1,9 +1,16 @@
 #! /bin/bash
 
 # pidp server script
-#
-# This script should be run as an ordinary user (not root)
-#
+
+DESCRIPTION="
+Repeatedly run a simh PDP10 or PDP11 simulator, using the value
+of the console switches to select the operating system to be run.
+In general one of four front panels may be used: none, Java panel
+(assumed to be running), PiDP panel via REALCONS (assumed to be
+running), or PiDP panel integrated into simh.
+
+This should be run as an ordinary user (not root)
+"
 
 PIDP_DIR=
 DEFAULT_CPU=
@@ -43,12 +50,26 @@ do
 		echo -n "[-b bootfile] "
 		echo -n "[-c default_cpu] "
 		echo -n "[-d directory] "
-		echo -n "[-g getcsw_program] "
-		echo -n "[-j | -p | -r | -R realcons_panel ] "
-		echo -n "[-s switch_value ] "
+		echo -n "[-g program] "
+		echo -n "[-j | -p | -r | -R rcpanel ] "
+		echo -n "[-s switches ] "
 		echo -n "[-x10 | -x11] "
 		echo -n "[-v] "
 		echo
+		echo "${DESCRIPTION}"
+		echo "Options:"
+		echo "-b bootfile	Use 'bootfile' (e.g., boot.ini) as the simh init script"
+		echo "-c default_cpu	Use 'default_cpu' (e.g., pdp10-ka) if no OS-specific CPU"
+		echo "-d directory	PiDP directory (e.g., /opt/pidp11)"
+		echo "-g program	Use 'program' (e.g., getcsw) to read the console switches"
+		echo "-j		Use Java panel server"
+		echo "-p		Use simh-integrated PiDP panel server"
+		echo "-r		Use default REALCONS panel"
+		echo "-R rcpanel	Use REALCONS panel named 'rcpanel'"
+		echo "-s switches	Run once using 'switch_value' to select the OS"
+		echo "-v		Verbose output"
+		echo "-x10		Simulate PDP-10"
+		echo "-x11		Simulate PDP-11"
 		exit 1 ;;
 	esac
 done

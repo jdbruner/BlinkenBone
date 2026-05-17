@@ -38,6 +38,12 @@ do
 		echo -n "[-x10 | -x11] "
 		echo -n "[-v] "
 		echo
+		echo "-e	Directly access Ethernet (vs TUN or NAT)"
+		echo "-k	Reverse direction of PiDP-11 knobs"
+		echo "-r	Use REALCONS (instead of simh-integrated GPIO) [PiDP10 only]"
+		echo "-x10	Install PiDP10"
+		echo "-x11	Install PiDP11"
+		echo "-v	Verbose"
 		exit 1
 		;;
 	esac

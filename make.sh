@@ -28,6 +28,9 @@ do
         echo -n "[-x10 | -x11] "
         echo -n "[-v] "
         echo
+	echo "-v	Verbose"
+	echo "-x10	Build pidp10"
+	echo "-x11	Build pidp11"
         exit 1
         ;;
     esac

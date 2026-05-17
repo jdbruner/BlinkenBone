@@ -1,12 +1,13 @@
 #! /bin/bash
 
 # Java panel simulation
-#
-# This starts a Java panel server and then invokes the pidp.sh
-# script to launch a simh client that connects to that server
-#
-# This script should be run as an ordinary user (not root)
-#
+
+DESCRIPTION="
+Starts a Java panel server and then invokes the pidp.sh script
+to launch a simh client that connects to that server
+
+This should be run as an ordinary user (not root)
+"
 
 PIDP_DIR=
 JAVA_APP=
@@ -30,9 +31,17 @@ do
 		esac ;;
 	*)	echo -n "Usage: $0 "
 		echo -n "[-d directory] "
+		echo -n "[-s switches] "
 		echo -n "[-x10 | -x11] "
 		echo -n "[-v] "
 		echo
+		echo "${DESCRIPTION}"
+		echo "Options:"
+		echo "-d directory	PiDP directory (e.g., /opt/pidp11)"
+		echo "-s switches	Run once using 'switches' to select the OS"
+		echo "-v		Verbose output"
+		echo "-x10		Simulate PDP-10"
+		echo "-x11		Simulate PDP-11"
 		exit 1 ;;
 	esac
 done

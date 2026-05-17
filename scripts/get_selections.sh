@@ -1,14 +1,22 @@
 #! /bin/bash
-#
-# Process the "selections" file, printing its information only for
-# directories that exist.
+
+INFO_FILE=pidp_info
+
+DESCRIPTION="
+Create a list of all available selections. Each operating system directory
+contains a '${INFO_FILE}' metadata file. The list of selections is created
+from that metadata. The default output format is human readable, including
+the octal switch value and either the description of the OS (if available)
+or the name of the OS directory (if no description is available). The
+verbose output includes multiple attributes and is intended for consumption
+by other scripts (notably pidp.sh).
+"
+
 #
 # -cDEFAULT: print CPU name, DEFAULT if none
 # -d: print description
 # -v: print in verbose (name=value) format
 # -wN: number of octal digits in csw (width)
-
-INFO_FILE=pidp_info
 
 declare -a all_params=( csw dir cpu desc )
 declare -a show_params=( csw dir )
@@ -36,6 +44,13 @@ while getopts ":c:dv" opt ; do
         echo -n "[-wN] "
         echo -n "[dir] "
         echo
+	echo "${DESCRIPTION}"
+	echo "Options:"
+	echo "-c default_cpu	Show CPU, use 'default_cpu' if none is specified"
+	echo "-d		Show description"
+	echo "-v		Print in verbose (name=value) format"
+	echo "-wN		Number of octal digits in csw value (default is 4)"
+	echo "dir		Directory (e.g., /opt/pidp11/systems)"
         exit 1
         ;;
     esac
