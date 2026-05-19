@@ -10,6 +10,7 @@ BLAPI = $(BLAPIDIR)/rpc_blinkenlight_api_svc.c \
 	$(BLAPIDIR)/rpc_blinkenlight_api.x \
 	$(BLAPIDIR)/rpc_blinkenlight_api.h \
 	$(BLAPIDIR)/rpc_blinkenlight_api_xdr.c
+BLAPIX = blinkenlight_api/rpc_blinkenlight_api.x
 
 # Simh targets for PDP11 and PDP10
 # Vanilla and REALCONS are cross-platform
@@ -65,7 +66,7 @@ $(PDP10_TARGETS) $(PDP11_TARGETS): $(BLAPI)
 
 pidp10:	$(OBJDIR) $(PIDP10) $(COMMON)
 
-$(BLAPI):
+$(BLAPI): $(BLAPIX)
 	@echo Blinkenlight API
 	$(MAKE) -C $(BLAPIDIR) sources
 	

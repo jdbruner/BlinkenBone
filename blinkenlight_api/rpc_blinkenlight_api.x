@@ -37,6 +37,8 @@ typedef string rpc_blinkenlight_api_nametype<RPC_BLINKENLIGHT_API_MAX_NAME_LEN>;
 const RPC_BLINKENLIGHT_API_MAX_INFOSTRING_LEN = 1024;
 typedef string rpc_blinkenlight_api_infostringtype<RPC_BLINKENLIGHT_API_MAX_INFOSTRING_LEN>; /* a multi line string */
 
+%
+%#define RPC_BLINKENLIGHT_UNIX_SOCKET "\0/tmp/realcons-panel.sock"
 
 enum rpc_blinkenlight_api_control_type_enum
 {

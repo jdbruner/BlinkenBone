@@ -16,6 +16,8 @@
 #define SIG_PF void(*)(int)
 #endif
 
+#define RPC_BLINKENLIGHT_UNIX_SOCKET "\0/tmp/realcons-panel.sock"
+
 static rpc_blinkenlight_api_getinfo_res *
 _rpc_blinkenlight_api_getinfo_1 (void  *argp, struct svc_req *rqstp)
 {

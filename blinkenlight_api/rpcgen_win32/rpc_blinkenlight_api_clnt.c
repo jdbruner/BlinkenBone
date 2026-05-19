@@ -6,6 +6,8 @@
 #include <memory.h> /* for memset */
 #include "rpc_blinkenlight_api.h"
 
+#define RPC_BLINKENLIGHT_UNIX_SOCKET "\0/tmp/realcons-panel.sock"
+
 /* Default timeout can be changed using clnt_control() */
 static struct timeval TIMEOUT = { 25, 0 };
 

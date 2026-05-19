@@ -22,14 +22,18 @@
 
 
    16-Feb-2012  JH      created
-
+   17-May-2026  JB      add Unix-domain socket support
 
    Class for client-side of RPC Blinkenlight API
         - manages RPC connection
         - procedures to fill the "panels" struct with data from server over blinkenlight_api
  */
 
+#ifndef WIN32
+#include <unistd.h>
+#endif
 
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
@@ -45,20 +49,20 @@
 
 /*
  *  constructor for client object
- *	connect
+ *    connect
  */
 blinkenlight_api_client_t *blinkenlight_api_client_constructor(void)
 {
-	blinkenlight_api_client_t *_this;
+    blinkenlight_api_client_t *_this;
 
-	_this = (blinkenlight_api_client_t *) malloc(sizeof(blinkenlight_api_client_t));
-	_this->connected = 0;
-	_this->rpc_server_hostname = NULL;
-	_this->rpc_client = NULL;
-	_this->panel_list = blinkenlight_panels_constructor();
-	strcpy(_this->error_text, "");
-	_this->error_file = NULL;
-	return _this;
+    _this = (blinkenlight_api_client_t *) malloc(sizeof(blinkenlight_api_client_t));
+    _this->connected = 0;
+    _this->rpc_server_hostname = NULL;
+    _this->rpc_client = NULL;
+    _this->panel_list = blinkenlight_panels_constructor();
+    strcpy(_this->error_text, "");
+    _this->error_file = NULL;
+    return _this;
 }
 
 /*
@@ -66,399 +70,431 @@ blinkenlight_api_client_t *blinkenlight_api_client_constructor(void)
  */
 void blinkenlight_api_client_destructor(blinkenlight_api_client_t *_this)
 {
-	if (_this->connected)
-		blinkenlight_api_client_disconnect(_this);
-	blinkenlight_panels_destructor(_this->panel_list);
-	free(_this->rpc_server_hostname);
-	free(_this);
+    if (_this->connected)
+        blinkenlight_api_client_disconnect(_this);
+    blinkenlight_panels_destructor(_this->panel_list);
+    free(_this->rpc_server_hostname);
+    free(_this);
 }
 
 char *blinkenlight_api_client_get_error_text(blinkenlight_api_client_t *_this)
 {
-	static char buffer[2048];
-	sprintf(buffer, "%s (in %s, line %d)", _this->error_text, _this->error_file, _this->error_line);
-	return buffer;
+    static char buffer[2048];
+    sprintf(buffer, "%s (in %s, line %d)", _this->error_text, _this->error_file, _this->error_line);
+    return buffer;
 }
 
 blinkenlight_api_status_t blinkenlight_api_client_connect(blinkenlight_api_client_t *_this,
-		char *server_hostname)
+        char *server_hostname)
 {
-	int status;
-	if (_this->connected)
-	{
-		sprintf(_this->error_text, "Already connected to %s", _this->rpc_server_hostname);
-		_this->error_file = __FILE__;
-		_this->error_line = __LINE__;
-		return 1; // error
-	}
+    int status;
+    if (_this->connected)
+    {
+        sprintf(_this->error_text, "Already connected to %s", _this->rpc_server_hostname);
+        _this->error_file = __FILE__;
+        _this->error_line = __LINE__;
+        return 1; // error
+    }
 #ifdef WIN32
-	status = rpc_nt_init(); // initialize winsock
-	if (status != 0)
-	{
-		sprintf(_this->error_text, "rpc_nt_init() failed with code %d.", status);
-		_this->error_file = __FILE__; _this->error_line = __LINE__;
-		return 1;
-	}
+    status = rpc_nt_init(); // initialize winsock
+    if (status != 0)
+    {
+        sprintf(_this->error_text, "rpc_nt_init() failed with code %d.", status);
+        _this->error_file = __FILE__; _this->error_line = __LINE__;
+        return 1;
+    }
 #endif
-	_this->rpc_server_hostname = strdup(server_hostname); // free in disconnect
+    _this->rpc_server_hostname = strdup(server_hostname); // free in disconnect
 
-	/*
-	 * Create client "handle" used for calling MESSAGEPROG on the
-	 * server designated on the command line. We tell the RPC package
-	 * to use the "tcp" protocol when contacting the server.
-	 */
-	_this->rpc_client = clnt_create(_this->rpc_server_hostname, BLINKENLIGHTD, BLINKENLIGHTD_VERS,
-			"udp");
-	//"tcp");
-	if (_this->rpc_client == NULL)
-	{
-		/*
-		 * Couldn't establish connection with server.
-		 * Get rpc error message and die.
-		 */
-		strcpy(_this->error_text, clnt_spcreateerror(_this->rpc_server_hostname));
-		_this->error_file = __FILE__;
-		_this->error_line = __LINE__;
-		return 1; // error
-	}
+#ifndef WIN32
+    if (strcmp(server_hostname, "localhost") == 0) {
+        static struct sockaddr_un sun = {
+            .sun_family = AF_UNIX,
+            .sun_path = RPC_BLINKENLIGHT_UNIX_SOCKET
+        };
+		const size_t sun_size = offsetof(struct sockaddr_un, sun_path) +
+		  sizeof RPC_BLINKENLIGHT_UNIX_SOCKET - 1;
+        static struct netbuf svcaddr = {
+            .buf    = &sun,
+            .len    = sun_size,
+            .maxlen = sun_size
+        };
+        int fd;
 
-	blinkenlight_panels_clear(_this->panel_list);
+        /*
+         * For the local host, try first to connect on a UNIX-domain
+         * socket. If this fails, fall back to "datagram_v" (below).
+         */
+        if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) >= 0 &&
+          connect(fd, (const struct sockaddr *)&sun, sun_size) >= 0 &&
+          (_this->rpc_client = clnt_vc_create(fd, &svcaddr, BLINKENLIGHTD, BLINKENLIGHTD_VERS, 0, 0)) != NULL) {
+            goto connected;
+        } else if (fd >= 0)
+            close(fd);
+    }
+#define RPC_CLIENT_NETWORK_TYPE "datagram_v"    // udp or udp6
+#else
+#define RPC_CLIENT_NETWORK_TYPE "udp"           // Windows doesn't understand "datagram_v"
+// Silence Visual C regarding the unreferenced label below ("connected")
+#pragma warning(disable : 4102)
+#endif
 
-	_this->connected = 1;
-	return 0; // OK
+    /*
+     * Create client "handle" used for calling MESSAGEPROG on the
+     * server designated on the command line. We tell the RPC package
+     * to use the RPC_CLIENT_NETWORK_TYPE when contacting the server.
+     */
+    _this->rpc_client = clnt_create(_this->rpc_server_hostname, BLINKENLIGHTD, BLINKENLIGHTD_VERS, RPC_CLIENT_NETWORK_TYPE);
+    if (_this->rpc_client == NULL)
+    {
+        /*
+         * Couldn't establish connection with server.
+         * Get rpc error message and die.
+         */
+        strcpy(_this->error_text, clnt_spcreateerror(_this->rpc_server_hostname));
+        _this->error_file = __FILE__;
+        _this->error_line = __LINE__;
+        return 1; // error
+    }
+
+connected:
+    blinkenlight_panels_clear(_this->panel_list);
+
+    _this->connected = 1;
+    return 0; // OK
 }
 
 blinkenlight_api_status_t blinkenlight_api_client_disconnect(blinkenlight_api_client_t *_this)
 {
-	if (!_this->connected)
-	{
-		sprintf(_this->error_text, "Not connected");
-		_this->error_file = __FILE__;
-		_this->error_line = __LINE__;
-		return 1; // error
-	}
+    if (!_this->connected)
+    {
+        sprintf(_this->error_text, "Not connected");
+        _this->error_file = __FILE__;
+        _this->error_line = __LINE__;
+        return 1; // error
+    }
 
-	_this->connected = 0;
+    _this->connected = 0;
 #ifdef WIN32
-	rpc_nt_exit();
+    rpc_nt_exit();
 #endif
-	free(_this->rpc_server_hostname);
-	_this->rpc_server_hostname = NULL;
-	clnt_destroy( (CLIENT *)_this->rpc_client) ;
-	return 0; // OK
+    free(_this->rpc_server_hostname);
+    _this->rpc_server_hostname = NULL;
+    clnt_destroy( (CLIENT *)_this->rpc_client) ;
+    return 0; // OK
 }
 
 /*
- *	read multi line info from server
+ *    read multi line info from server
  */
 blinkenlight_api_status_t blinkenlight_api_client_get_serverinfo(blinkenlight_api_client_t *_this,
-		char *buffer, int buffersize)
+        char *buffer, int buffersize)
 {
-	int n;
-	rpc_blinkenlight_api_getinfo_res *result;
+    int n;
+    rpc_blinkenlight_api_getinfo_res *result;
 
-	result = rpc_blinkenlight_api_getinfo_1((CLIENT *) _this->rpc_client);
-	if (result == NULL)
-	{
-		// An error occurred while calling the server: Get rpc error message and die.
-		strcpy(_this->error_text,
-				clnt_sperror((CLIENT *) _this->rpc_client, _this->rpc_server_hostname));
-		_this->error_file = __FILE__;
-		_this->error_line = __LINE__;
-		return 1; // error
-	}
-	n = strlen(result->info);
-	if (n >= buffersize)
-		n = buffersize - 1;
-	strncpy(buffer, result->info, buffersize);
-	buffer[n] = '\0';
-	xdr_free((xdrproc_t)xdr_rpc_blinkenlight_api_getinfo_res, (char*)result) ;
-	return 0; // OK
+    result = rpc_blinkenlight_api_getinfo_1((CLIENT *) _this->rpc_client);
+    if (result == NULL)
+    {
+        // An error occurred while calling the server: Get rpc error message and die.
+        strcpy(_this->error_text,
+                clnt_sperror((CLIENT *) _this->rpc_client, _this->rpc_server_hostname));
+        _this->error_file = __FILE__;
+        _this->error_line = __LINE__;
+        return 1; // error
+    }
+    n = strlen(result->info);
+    if (n >= buffersize)
+        n = buffersize - 1;
+    strncpy(buffer, result->info, buffersize);
+    buffer[n] = '\0';
+    xdr_free((xdrproc_t)xdr_rpc_blinkenlight_api_getinfo_res, (char*)result) ;
+    return 0; // OK
 }
 
 /*
  * read list of panels and controls from server
  */
 blinkenlight_api_status_t blinkenlight_api_client_get_controls(blinkenlight_api_client_t *_this,
-		blinkenlight_panel_t *p)
+        blinkenlight_panel_t *p)
 {
-	unsigned i_control;
-	struct rpc_blinkenlight_api_getcontrolinfo_res *result_control;
-	blinkenlight_control_t *c;
-	int	error_code ;
-	// read controls with increasing handles, until error
-	i_control = 0;
-	do
-	{
-		// call remote procedure on the server
-		result_control = rpc_blinkenlight_api_getcontrolinfo_1(p->index, i_control,
-				(CLIENT *) _this->rpc_client);
-		if (result_control == NULL)
-		{
-			// An error occurred while calling the server: Get rpc error message and die.
-			strcpy(_this->error_text,
-					clnt_sperror((CLIENT *) _this->rpc_client, _this->rpc_server_hostname));
-			_this->error_file = __FILE__;
-			_this->error_line = __LINE__;
-			return 1; // error
-		}
-		error_code = result_control->error_code ;
-		if (error_code == 0)
-		{
-			// valid panel: add to our database
-			c = blinkenlight_add_control(_this->panel_list, p);
-			assert(c->index == i_control);
-			// server lists == client lists
-			strcpy(c->name, result_control->control.name);
-			c->type = (blinkenlight_control_type_t)result_control->control.type;
-			c->is_input = result_control->control.is_input;
-			c->radix = result_control->control.radix;
-			c->value_bitlen = result_control->control.value_bitlen;
-			c->value_bytelen = result_control->control.value_bytelen;
-			i_control++;
-		}
-		xdr_free((xdrproc_t)xdr_rpc_blinkenlight_api_getcontrolinfo_res, (char*)result_control) ;
-	} while (error_code == 0);
-	return 0; // OK
+    unsigned i_control;
+    struct rpc_blinkenlight_api_getcontrolinfo_res *result_control;
+    blinkenlight_control_t *c;
+    int    error_code ;
+    // read controls with increasing handles, until error
+    i_control = 0;
+    do
+    {
+        // call remote procedure on the server
+        result_control = rpc_blinkenlight_api_getcontrolinfo_1(p->index, i_control,
+                (CLIENT *) _this->rpc_client);
+        if (result_control == NULL)
+        {
+            // An error occurred while calling the server: Get rpc error message and die.
+            strcpy(_this->error_text,
+                    clnt_sperror((CLIENT *) _this->rpc_client, _this->rpc_server_hostname));
+            _this->error_file = __FILE__;
+            _this->error_line = __LINE__;
+            return 1; // error
+        }
+        error_code = result_control->error_code ;
+        if (error_code == 0)
+        {
+            // valid panel: add to our database
+            c = blinkenlight_add_control(_this->panel_list, p);
+            assert(c->index == i_control);
+            // server lists == client lists
+            strcpy(c->name, result_control->control.name);
+            c->type = (blinkenlight_control_type_t)result_control->control.type;
+            c->is_input = result_control->control.is_input;
+            c->radix = result_control->control.radix;
+            c->value_bitlen = result_control->control.value_bitlen;
+            c->value_bytelen = result_control->control.value_bytelen;
+            i_control++;
+        }
+        xdr_free((xdrproc_t)xdr_rpc_blinkenlight_api_getcontrolinfo_res, (char*)result_control) ;
+    } while (error_code == 0);
+    return 0; // OK
 
 }
 
 blinkenlight_api_status_t blinkenlight_api_client_get_panels_and_controls(
-		blinkenlight_api_client_t *_this)
+        blinkenlight_api_client_t *_this)
 {
-	unsigned i_panel;
-	struct rpc_blinkenlight_api_getpanelinfo_res *result_panel;
-	blinkenlight_panel_t *p;
-	int	error_code ;
+    unsigned i_panel;
+    struct rpc_blinkenlight_api_getpanelinfo_res *result_panel;
+    blinkenlight_panel_t *p;
+    int    error_code ;
 
-	blinkenlight_panels_clear(_this->panel_list);
-	// read panels with increasing handles, until error
-	i_panel = 0;
-	do
-	{
-		// call remote procedure on the server
-		result_panel = rpc_blinkenlight_api_getpanelinfo_1(i_panel, (CLIENT *) _this->rpc_client);
-		if (result_panel == NULL)
-		{
-			// An error occurred while calling the server: Get rpc error message and die.
-			strcpy(_this->error_text,
-					clnt_sperror((CLIENT *) _this->rpc_client, _this->rpc_server_hostname));
-			_this->error_file = __FILE__;
-			_this->error_line = __LINE__;
-			return 1; // error
-		}
-		error_code = result_panel->error_code ;
-		if (error_code == 0)
-		{
-			// valid panel: add to our database
-			p = blinkenlight_add_panel(_this->panel_list);
-			assert(p->index == i_panel);
-			// server lists == client lists
-			strcpy(p->name, result_panel->panel.name);
-			//strcpy(p->info, result_panel->panel.info);
-			p->controls_outputs_count = result_panel->panel.controls_outputs_count;
-			p->controls_inputs_count = result_panel->panel.controls_inputs_count;
-			p->controls_inputs_values_bytecount =
-					result_panel->panel.controls_inputs_values_bytecount;
-			p->controls_outputs_values_bytecount =
-					result_panel->panel.controls_outputs_values_bytecount;
+    blinkenlight_panels_clear(_this->panel_list);
+    // read panels with increasing handles, until error
+    i_panel = 0;
+    do
+    {
+        // call remote procedure on the server
+        result_panel = rpc_blinkenlight_api_getpanelinfo_1(i_panel, (CLIENT *) _this->rpc_client);
+        if (result_panel == NULL)
+        {
+            // An error occurred while calling the server: Get rpc error message and die.
+            strcpy(_this->error_text,
+                    clnt_sperror((CLIENT *) _this->rpc_client, _this->rpc_server_hostname));
+            _this->error_file = __FILE__;
+            _this->error_line = __LINE__;
+            return 1; // error
+        }
+        error_code = result_panel->error_code ;
+        if (error_code == 0)
+        {
+            // valid panel: add to our database
+            p = blinkenlight_add_panel(_this->panel_list);
+            assert(p->index == i_panel);
+            // server lists == client lists
+            strcpy(p->name, result_panel->panel.name);
+            //strcpy(p->info, result_panel->panel.info);
+            p->controls_outputs_count = result_panel->panel.controls_outputs_count;
+            p->controls_inputs_count = result_panel->panel.controls_inputs_count;
+            p->controls_inputs_values_bytecount =
+                    result_panel->panel.controls_inputs_values_bytecount;
+            p->controls_outputs_values_bytecount =
+                    result_panel->panel.controls_outputs_values_bytecount;
 
-			i_panel++;
-			blinkenlight_api_client_get_controls(_this, p); // get controls for panel
-		}
-		xdr_free((xdrproc_t)xdr_rpc_blinkenlight_api_getpanelinfo_res, (char*)result_panel) ;
-	} while (error_code == 0);
-	return 0; // OK
+            i_panel++;
+            blinkenlight_api_client_get_controls(_this, p); // get controls for panel
+        }
+        xdr_free((xdrproc_t)xdr_rpc_blinkenlight_api_getpanelinfo_res, (char*)result_panel) ;
+    } while (error_code == 0);
+    return 0; // OK
 
 }
 
 /*
- *	read input control values from remote server into client input controls
+ *    read input control values from remote server into client input controls
  */
 blinkenlight_api_status_t blinkenlight_api_client_get_inputcontrols_values(
-		blinkenlight_api_client_t *_this, blinkenlight_panel_t *p)
+        blinkenlight_api_client_t *_this, blinkenlight_panel_t *p)
 {
-	rpc_blinkenlight_api_controlvalues_struct *result_valuelist;
-	int	error_code ;
-	blinkenlight_control_t *c;
-	unsigned i_control;
-	unsigned char *value_byte_ptr; // index in received value byte stream
-	uint64_t value;
+    rpc_blinkenlight_api_controlvalues_struct *result_valuelist;
+    int    error_code ;
+    blinkenlight_control_t *c;
+    unsigned i_control;
+    unsigned char *value_byte_ptr; // index in received value byte stream
+    uint64_t value;
 
-	result_valuelist = rpc_blinkenlight_api_getpanel_controlvalues_1(p->index,
-			(CLIENT *) _this->rpc_client);
-	if (result_valuelist == NULL)
-	{
-		// An error occurred while calling the server: Get rpc error message and die.
-		strcpy(_this->error_text,
-				clnt_sperror((CLIENT *) _this->rpc_client, _this->rpc_server_hostname));
-		_this->error_file = __FILE__;
-		_this->error_line = __LINE__;
-		return 1; // error
-	}
+    result_valuelist = rpc_blinkenlight_api_getpanel_controlvalues_1(p->index,
+            (CLIENT *) _this->rpc_client);
+    if (result_valuelist == NULL)
+    {
+        // An error occurred while calling the server: Get rpc error message and die.
+        strcpy(_this->error_text,
+                clnt_sperror((CLIENT *) _this->rpc_client, _this->rpc_server_hostname));
+        _this->error_file = __FILE__;
+        _this->error_line = __LINE__;
+        return 1; // error
+    }
 
-	error_code = result_valuelist->error_code ;
-	if (error_code == 0)
-	{
-		/* go through all input controls, assign value for each */
-		// check: exakt amount of values provided?
-		// "Sum of bytes" must be "sum(all controls) of value_bytelen
-		if (p->controls_inputs_values_bytecount != result_valuelist->value_bytes.value_bytes_len)
-		{
-			sprintf(_this->error_text,
-					"Error in blinkenlight_api_getpanel_controlvalues():\n"
-							"Sum (Panel[%s].inputcontrols.value_bytelen) is %d, but %d values were received.",
-					p->name, p->controls_inputs_values_bytecount,
-					result_valuelist->value_bytes.value_bytes_len);
-			_this->error_file = __FILE__;
-			_this->error_line = __LINE__;
-			return 1;
-		}
-		/* go through all input controls, assign value to each
-		 * decode control value from the right amount of bytes
-		 * */
-		value_byte_ptr = result_valuelist->value_bytes.value_bytes_val;
-		for (i_control = 0; i_control < p->controls_count; i_control++)
-		{
-			c = &(p->controls[i_control]);
-			if (c->is_input)
-			{
-				assert(
-						value_byte_ptr  < (result_valuelist->value_bytes.value_bytes_val + result_valuelist->value_bytes.value_bytes_len) );
-				value = decode_uint64_from_bytes(value_byte_ptr, c->value_bytelen);
-				c->value_previous = c->value;
-				c->value = value;
-				value_byte_ptr += c->value_bytelen;
-			}
-		}
-	}
-	xdr_free((xdrproc_t)xdr_rpc_blinkenlight_api_controlvalues_struct, (char*)result_valuelist) ;
-	return 0; // OK
+    error_code = result_valuelist->error_code ;
+    if (error_code == 0)
+    {
+        /* go through all input controls, assign value for each */
+        // check: exakt amount of values provided?
+        // "Sum of bytes" must be "sum(all controls) of value_bytelen
+        if (p->controls_inputs_values_bytecount != result_valuelist->value_bytes.value_bytes_len)
+        {
+            sprintf(_this->error_text,
+                    "Error in blinkenlight_api_getpanel_controlvalues():\n"
+                            "Sum (Panel[%s].inputcontrols.value_bytelen) is %d, but %d values were received.",
+                    p->name, p->controls_inputs_values_bytecount,
+                    result_valuelist->value_bytes.value_bytes_len);
+            _this->error_file = __FILE__;
+            _this->error_line = __LINE__;
+            return 1;
+        }
+        /* go through all input controls, assign value to each
+         * decode control value from the right amount of bytes
+         * */
+        value_byte_ptr = result_valuelist->value_bytes.value_bytes_val;
+        for (i_control = 0; i_control < p->controls_count; i_control++)
+        {
+            c = &(p->controls[i_control]);
+            if (c->is_input)
+            {
+                assert(
+                        value_byte_ptr  < (result_valuelist->value_bytes.value_bytes_val + result_valuelist->value_bytes.value_bytes_len) );
+                value = decode_uint64_from_bytes(value_byte_ptr, c->value_bytelen);
+                c->value_previous = c->value;
+                c->value = value;
+                value_byte_ptr += c->value_bytelen;
+            }
+        }
+    }
+    xdr_free((xdrproc_t)xdr_rpc_blinkenlight_api_controlvalues_struct, (char*)result_valuelist) ;
+    return 0; // OK
 }
 
 /*
- *	write values from client outputs controls to server control's
+ *    write values from client outputs controls to server control's
  *      on success: value_previous := value
  */
 blinkenlight_api_status_t blinkenlight_api_client_set_outputcontrols_values(
-		blinkenlight_api_client_t *_this, blinkenlight_panel_t *p)
+        blinkenlight_api_client_t *_this, blinkenlight_panel_t *p)
 {
-	rpc_blinkenlight_api_controlvalues_struct valuelist;
-	blinkenlight_control_t *c;
-	unsigned i_control;
-	unsigned char *value_byte_ptr; // index in result value byte stream
-	rpc_blinkenlight_api_setpanel_controlvalues_res *result;
+    rpc_blinkenlight_api_controlvalues_struct valuelist;
+    blinkenlight_control_t *c;
+    unsigned i_control;
+    unsigned char *value_byte_ptr; // index in result value byte stream
+    rpc_blinkenlight_api_setpanel_controlvalues_res *result;
 
-	// 1) fill valuelist with values of output controls
-	valuelist.error_code = 0;
-	valuelist.value_bytes.value_bytes_len = p->controls_outputs_values_bytecount;
-	valuelist.value_bytes.value_bytes_val = (u_char *) calloc(p->controls_outputs_values_bytecount,
-			sizeof(u_char));
-	assert(valuelist.value_bytes.value_bytes_val);
+    // 1) fill valuelist with values of output controls
+    valuelist.error_code = 0;
+    valuelist.value_bytes.value_bytes_len = p->controls_outputs_values_bytecount;
+    valuelist.value_bytes.value_bytes_val = (u_char *) calloc(p->controls_outputs_values_bytecount,
+            sizeof(u_char));
+    assert(valuelist.value_bytes.value_bytes_val);
 
-	/* go through all output controls, assign value from each into result stream
-	 * each output control puts "value_bytelen" bytes into char stream, lsb first */
-	value_byte_ptr = valuelist.value_bytes.value_bytes_val;
-	for (i_control = 0; i_control < p->controls_count; i_control++)
-	{
-		c = &(p->controls[i_control]);
-		if (!c->is_input)
-		{
-			assert(
-					value_byte_ptr < (valuelist.value_bytes.value_bytes_val + valuelist.value_bytes.value_bytes_len));
-			encode_uint64_to_bytes(value_byte_ptr, c->value, c->value_bytelen);
-			value_byte_ptr += c->value_bytelen; // next pos in buffer
-		}
-	}
-	// 2) list filled, call server proc
-	result = rpc_blinkenlight_api_setpanel_controlvalues_1(p->index, valuelist,
-			(CLIENT *) _this->rpc_client);
-	if (result == NULL)
-	{
-		// An error occurred while calling the server: Get rpc error message and die.
-		strcpy(_this->error_text,
-				clnt_sperror((CLIENT *) _this->rpc_client, _this->rpc_server_hostname));
-		_this->error_file = __FILE__;
-		_this->error_line = __LINE__;
-		return 1; // error
-	}
-	assert(result->error_code == 0);
+    /* go through all output controls, assign value from each into result stream
+     * each output control puts "value_bytelen" bytes into char stream, lsb first */
+    value_byte_ptr = valuelist.value_bytes.value_bytes_val;
+    for (i_control = 0; i_control < p->controls_count; i_control++)
+    {
+        c = &(p->controls[i_control]);
+        if (!c->is_input)
+        {
+            assert(
+                    value_byte_ptr < (valuelist.value_bytes.value_bytes_val + valuelist.value_bytes.value_bytes_len));
+            encode_uint64_to_bytes(value_byte_ptr, c->value, c->value_bytelen);
+            value_byte_ptr += c->value_bytelen; // next pos in buffer
+        }
+    }
+    // 2) list filled, call server proc
+    result = rpc_blinkenlight_api_setpanel_controlvalues_1(p->index, valuelist,
+            (CLIENT *) _this->rpc_client);
+    if (result == NULL)
+    {
+        // An error occurred while calling the server: Get rpc error message and die.
+        strcpy(_this->error_text,
+                clnt_sperror((CLIENT *) _this->rpc_client, _this->rpc_server_hostname));
+        _this->error_file = __FILE__;
+        _this->error_line = __LINE__;
+        return 1; // error
+    }
+    assert(result->error_code == 0);
 
-	// 3) free list
-	free(valuelist.value_bytes.value_bytes_val);
+    // 3) free list
+    free(valuelist.value_bytes.value_bytes_val);
 
-	// 4) output successful: set value_previous" to value
-	for (i_control = 0; i_control < p->controls_count; i_control++)
-	{
-		c = &(p->controls[i_control]);
-		if (!c->is_input)
-			c->value_previous = c->value;
-	}
-	xdr_free((xdrproc_t)xdr_rpc_blinkenlight_api_setpanel_controlvalues_res, (char *)result) ;
-	return 0; // OK
+    // 4) output successful: set value_previous" to value
+    for (i_control = 0; i_control < p->controls_count; i_control++)
+    {
+        c = &(p->controls[i_control]);
+        if (!c->is_input)
+            c->value_previous = c->value;
+    }
+    xdr_free((xdrproc_t)xdr_rpc_blinkenlight_api_setpanel_controlvalues_res, (char *)result) ;
+    return 0; // OK
 }
 
 
 /*
- *	get/set a parameter
- *	object_class: RPC_PARAM_CLASS_BUS,  RPC_PARAM_CLASS_PANEL, RPC_PARAM_CLASS_CONTROL
- *	handle: 0 for bus, index for PANEL, ? for  control
- *	param_handle:   RPC_PARAM_HANDLE_*
- *	result: 0,  RPC_PARAM_ERR_ILL_CLASS,RPC_PARAM_ERR_ILL_OBJECT, RPC_PARAM_ERR_ILL_PARAM
+ *    get/set a parameter
+ *    object_class: RPC_PARAM_CLASS_BUS,  RPC_PARAM_CLASS_PANEL, RPC_PARAM_CLASS_CONTROL
+ *    handle: 0 for bus, index for PANEL, ? for  control
+ *    param_handle:   RPC_PARAM_HANDLE_*
+ *    result: 0,  RPC_PARAM_ERR_ILL_CLASS,RPC_PARAM_ERR_ILL_OBJECT, RPC_PARAM_ERR_ILL_PARAM
  *
- *	example: get BlinenBoard driver tristate:
- *	blinkenlight_api_client_get_object_param(
- *		&value, RPC_PARAM_CLASS_PANEL, panel->index, RPC_PARAM_HANDLE_PANEL_DRIVER_ENABLED) ;
+ *    example: get BlinenBoard driver tristate:
+ *    blinkenlight_api_client_get_object_param(
+ *        &value, RPC_PARAM_CLASS_PANEL, panel->index, RPC_PARAM_HANDLE_PANEL_DRIVER_ENABLED) ;
  */
 blinkenlight_api_status_t blinkenlight_api_client_get_object_param(blinkenlight_api_client_t *_this,
-		unsigned *param_value, unsigned object_class, unsigned object_handle, unsigned param_handle)
+        unsigned *param_value, unsigned object_class, unsigned object_handle, unsigned param_handle)
 {
-	rpc_param_result_struct *result;
-	rpc_param_cmd_get_struct cmd_get;
+    rpc_param_result_struct *result;
+    rpc_param_cmd_get_struct cmd_get;
 
-	cmd_get.object_class = object_class;
-	cmd_get.object_handle = object_handle;
-	cmd_get.param_handle = param_handle;
+    cmd_get.object_class = object_class;
+    cmd_get.object_handle = object_handle;
+    cmd_get.param_handle = param_handle;
 
-	result = rpc_param_get_1(cmd_get, _this->rpc_client);
-	if (result == NULL)
-	{
-		// An error occurred while calling the server: Get rpc error message and die.
-		strcpy(_this->error_text,
-				clnt_sperror((CLIENT *) _this->rpc_client, _this->rpc_server_hostname));
-		_this->error_file = __FILE__;
-		_this->error_line = __LINE__;
-		return 1; // error
-	}
-	*param_value = result->param_value;
-	xdr_free((xdrproc_t)xdr_rpc_param_result_struct, (char *)result) ;
-	return result->error_code;
+    result = rpc_param_get_1(cmd_get, _this->rpc_client);
+    if (result == NULL)
+    {
+        // An error occurred while calling the server: Get rpc error message and die.
+        strcpy(_this->error_text,
+                clnt_sperror((CLIENT *) _this->rpc_client, _this->rpc_server_hostname));
+        _this->error_file = __FILE__;
+        _this->error_line = __LINE__;
+        return 1; // error
+    }
+    *param_value = result->param_value;
+    xdr_free((xdrproc_t)xdr_rpc_param_result_struct, (char *)result) ;
+    return result->error_code;
 }
 
 blinkenlight_api_status_t blinkenlight_api_client_set_object_param(blinkenlight_api_client_t *_this,
-		unsigned object_class, unsigned object_handle, unsigned param_handle, unsigned param_value)
+        unsigned object_class, unsigned object_handle, unsigned param_handle, unsigned param_value)
 {
-	rpc_param_result_struct *result;
-	rpc_param_cmd_set_struct cmd_set;
-	int	error_code ;
+    rpc_param_result_struct *result;
+    rpc_param_cmd_set_struct cmd_set;
+    int    error_code ;
 
-	cmd_set.object_class = object_class;
-	cmd_set.object_handle = object_handle;
-	cmd_set.param_handle = param_handle;
-	cmd_set.param_value = param_value;
+    cmd_set.object_class = object_class;
+    cmd_set.object_handle = object_handle;
+    cmd_set.param_handle = param_handle;
+    cmd_set.param_value = param_value;
 
-	result = rpc_param_set_1(cmd_set, _this->rpc_client);
-	if (result == NULL)
-	{
-		// An error occurred while calling the server: Get rpc error message and die.
-		strcpy(_this->error_text,
-				clnt_sperror((CLIENT *) _this->rpc_client, _this->rpc_server_hostname));
-		_this->error_file = __FILE__;
-		_this->error_line = __LINE__;
-		return 1; // error
-	}
-	error_code = result->error_code ;
-	xdr_free((xdrproc_t)xdr_rpc_param_result_struct, (char *)result) ;
-	return error_code;
+    result = rpc_param_set_1(cmd_set, _this->rpc_client);
+    if (result == NULL)
+    {
+        // An error occurred while calling the server: Get rpc error message and die.
+        strcpy(_this->error_text,
+                clnt_sperror((CLIENT *) _this->rpc_client, _this->rpc_server_hostname));
+        _this->error_file = __FILE__;
+        _this->error_line = __LINE__;
+        return 1; // error
+    }
+    error_code = result->error_code ;
+    xdr_free((xdrproc_t)xdr_rpc_param_result_struct, (char *)result) ;
+    return error_code;
 }
 

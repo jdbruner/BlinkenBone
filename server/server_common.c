@@ -22,6 +22,7 @@
  IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+ 17-May-2026  JB    add Unix-domain socket support
  06-Jan-2026  JB    refactored
  02-Jan-2026  JB    configurable knob rotation direction
  17-Oct-2025  JB    changes to use libgpiod instead of direct access to /dev/mem
@@ -302,58 +303,59 @@ blinkenlight_api_server(void)
 {
     register SVCXPRT *transp;
 
-// entry to server stub
-
-    void blinkenlightd_1(struct svc_req *rqstp, register SVCXPRT *transp);
+    // entry to server stub
+    extern void blinkenlightd_1(struct svc_req *rqstp, register SVCXPRT *transp);
 
     pmap_unset(BLINKENLIGHTD, BLINKENLIGHTD_VERS);
 
-    transp = svcudp_create(RPC_ANYSOCK);
-    if (transp == NULL) {
-        print(LOG_ERR, "%s", "cannot create udp service.");
-        exit(1);
-    }
-    if (!svc_register(transp, BLINKENLIGHTD, BLINKENLIGHTD_VERS, blinkenlightd_1, IPPROTO_UDP)) {
-        print(LOG_ERR, "%s", "unable to register (BLINKENLIGHTD, BLINKENLIGHTD_VERS, udp).");
-        exit(1);
+    // local (Unix-domain) transport
+    {
+        static struct sockaddr_un sun = {
+            .sun_family = AF_UNIX,
+            .sun_path = RPC_BLINKENLIGHT_UNIX_SOCKET
+        };
+        const size_t sun_size = offsetof(struct sockaddr_un, sun_path) +
+		  sizeof RPC_BLINKENLIGHT_UNIX_SOCKET - 1;
+
+        int fd;
+
+        if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0 ||
+          bind(fd, (const struct sockaddr *)&sun, sun_size) < 0 ||
+          listen(fd, SOMAXCONN) < 0 ||
+          (transp = svc_vc_create(fd, 0, 0)) == NULL ||
+          !svc_register(transp, BLINKENLIGHTD, BLINKENLIGHTD_VERS, blinkenlightd_1, 0)) {
+            // couldn't create UNIX-domain socket (not a fatal error)
+            print(LOG_ERR, "%s", "cannot create unix-domain service.");
+            if (fd >= 0)
+                close(fd);
+        } 
     }
 
-    transp = svctcp_create(RPC_ANYSOCK, 0, 0);
-    if (transp == NULL) {
-        print(LOG_ERR, "%s", "cannot create tcp service.");
+    // visible transports (tcp, tcp6, udp, udp6)  
+    if (!svc_create(blinkenlightd_1, BLINKENLIGHTD, BLINKENLIGHTD_VERS, "visible")) {
+        print(LOG_ERR, "%s", "unable to register (BLINKENLIGHTD, BLINKENLIGHTD_VERS, visible)");
         exit(1);
     }
-    if (!svc_register(transp, BLINKENLIGHTD, BLINKENLIGHTD_VERS, blinkenlightd_1, IPPROTO_TCP)) {
-        print(LOG_ERR, "%s", "unable to register (BLINKENLIGHTD, BLINKENLIGHTD_VERS, tcp).");
-        exit(1);
-    }
-
-    // svc_run();
-    // alternate implementation of svn_run() with periodically timeout and
-    //  calling of callback
+    
+    // alternate implementation of svc_run() that terminates when
+    // blinkenlight_thread_terminate is nonzero
     {
         fd_set readfds;
-        struct timeval tv;
         int dtbsz = getdtablesize();
         while (!blinkenlight_thread_terminate) {
             readfds = svc_fdset;
-            tv.tv_sec = 0;
-            tv.tv_usec = 1000 * 2; // every 10 ms*time_slice_ms;
-            switch (select(dtbsz, &readfds, NULL, NULL, &tv)) {
+            switch (select(dtbsz, &readfds, NULL, NULL, NULL)) {
             case -1:
                 if (errno == EINTR)
                     continue;
                 perror("select");
                 return;
-            case 0: // timeout
-                    // provide the panel simulation with computing time
-                // not needed:RPC calls control value get/set callbacks
+            case 0: // shouldn't happen (no timeout)
                 break;
             default:
                 svc_getreqset(&readfds);
                 break;
             }
-            /**/
         }
     }
 }
@@ -529,6 +531,9 @@ main(int argc, char *argv[])
     pthread_join(gpiopattern_thread, NULL);
 
     blinkenlight_panels_destructor(blinkenlight_panel_list);
+
+    // unregister RPC services
+    svc_unregister(BLINKENLIGHTD, BLINKENLIGHTD_VERS);
 
     return 0;
 }

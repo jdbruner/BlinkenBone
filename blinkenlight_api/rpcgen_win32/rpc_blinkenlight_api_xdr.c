@@ -25,6 +25,8 @@ xdr_rpc_blinkenlight_api_infostringtype (XDR *xdrs, rpc_blinkenlight_api_infostr
 	return TRUE;
 }
 
+#define RPC_BLINKENLIGHT_UNIX_SOCKET "\0/tmp/realcons-panel.sock"
+
 bool_t
 xdr_rpc_blinkenlight_api_control_type_enum (XDR *xdrs, rpc_blinkenlight_api_control_type_enum *objp)
 {

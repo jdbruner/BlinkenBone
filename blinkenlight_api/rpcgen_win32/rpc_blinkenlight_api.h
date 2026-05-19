@@ -20,6 +20,8 @@ typedef char *rpc_blinkenlight_api_nametype;
 
 typedef char *rpc_blinkenlight_api_infostringtype;
 
+#define RPC_BLINKENLIGHT_UNIX_SOCKET "\0/tmp/realcons-panel.sock"
+
 enum rpc_blinkenlight_api_control_type_enum {
 	rpc_blinkenlight_api_input_switch = 1,
 	rpc_blinkenlight_api_output_lamp = 2,
