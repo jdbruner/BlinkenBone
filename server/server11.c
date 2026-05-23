@@ -546,6 +546,8 @@ led_fixup(blinkenlight_panel_t *p, blinkenlight_control_t *c, int *panel_mode_pt
 
 /*
  * PIDP11-specific handling of the rotary knobs (switch row 2)
+ *
+ * Kudos to Johnny Billquist <bqt@softjar.se> for the underlying approach
  */
 void
 switch_fixup(int row, int switchscan)
@@ -555,37 +557,52 @@ switch_fixup(int row, int switchscan)
     // Gray encoding: rotate up sequence   = 11 -> 01 -> 00 -> 10 -> 11
     // Gray encoding: rotate down sequence = 11 -> 10 -> 00 -> 01 -> 11
 
-    static int lastCode[2] = { 3, 3 };
-    int code[2];
+    // Movement direction based upon previous code and current code
+    // Use by looking up gray_shift[previous][current]
+    const static enum direction { NOP, CW, CCW } gray_shift[4][4] = {
+        { NOP, CCW, CW, NOP },
+        { CW, NOP, NOP, CCW },
+        { CCW, NOP, NOP, CW },
+        { NOP, CW, CCW, NOP }
+    };
+    const unsigned KNOB_SCALE = 4; // 4 code changes per knob position
+    static struct {
+        const int scanshift;    // shift offset of bits in switchscan
+        const unsigned mask;    // (scale * number of positions) - 1
+        unsigned state;         // current state (scale * current position)
+        unsigned previous;      // previous value
+    } knob[2] = {
+        { 8, (KNOB_SCALE * 8) - 1 },    // address select knob
+        { 10, (KNOB_SCALE * 4) - 1 }    // data select knob
+    };
+    static int first_run = 1;
     int i;
 
+    // There's nothing to do unless this is switch row 2
     if (row != 2)
         return;
-
-    code[0] = (switchscan & 0x300) >> 8;
-    code[1] = (switchscan & 0xC00) >> 10;
-    switchscan = switchscan & 0xff; // set the 4 bits to zero
-
-    // detect rotation
+    
+    // For each knob, determine the movement direction and adjust
+    // the state accordingly. The knobValue only changes when there
+    // have been cumulative KNOB_SCALE changes in the same direction.
     for (i = 0; i < 2; i++) {
-        if ((code[i] == 1) && (lastCode[i] == 3))
-            lastCode[i] = code[i];
-        else if ((code[i] == 2) && (lastCode[i] == 3))
-            lastCode[i] = code[i];
-    }
-
-    // detect end of rotation
-    for (i = 0; i < 2; i++) {
-        if ((code[i] == 3) && (lastCode[i] == 1)) {
-            lastCode[i] = code[i];
-            knobValue[i] += knobIncrement;
-
-        } else if ((code[i] == 3) && (lastCode[i] == 2)) {
-            lastCode[i] = code[i];
-            knobValue[i] -= knobIncrement;
+        unsigned current = (switchscan >> knob[i].scanshift) & 3;
+        if (first_run) {
+            // Initialize the knob state based upon the current knobValue,
+            // which may have been set by a command line argument or
+            // environment variable
+            knob[i].state = knobValue[i] * KNOB_SCALE;
+        } else {
+            // Update the knob state based upon the previous and
+            // current Gray codes
+            switch (gray_shift[knob[i].previous][current]) {
+            case CW:    knob[i].state += knobIncrement; break;
+            case CCW:   knob[i].state -= knobIncrement; break;
+            }
         }
+        knob[i].previous = current;
+        knob[i].state &= knob[i].mask;
+        knobValue[i] = knob[i].state / KNOB_SCALE;
     }
-
-    knobValue[0] = knobValue[0] & 7;
-    knobValue[1] = knobValue[1] & 3;
+    first_run = 0;
 }
