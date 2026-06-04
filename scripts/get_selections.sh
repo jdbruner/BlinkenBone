@@ -126,5 +126,10 @@ if [[ -d "${basedir}" ]] ; then
                 fi
             fi
         fi
-    done | sort
+    done | sort | {
+	if [[ -z "${opt_v}" ]] ; then
+	    { column -t -s '	' -o '  ' | column ; }
+	else
+	    cat
+	fi }
 fi
