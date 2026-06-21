@@ -12,9 +12,13 @@ APTDONEFILE="$OBJDIR/.aptdone"
 PIDP_TYPE=11            # default to PiDP11
 VERBOSE=
 
-PACKAGES="ant default-jdk rpcbind screen \
-  libgpiod-dev libtirpc-dev libsdl2-dev libpcap-dev libreadline-dev \
-  libpcre2-dev libedit-dev libpng-dev libvdeplug-dev libgpiolib-dev"
+PACKAGES="build-essential ant default-jdk rpcbind screen \
+  libtirpc-dev libsdl2-dev libpcap-dev libreadline-dev \
+  libpcre2-dev libedit-dev libpng-dev libvdeplug-dev"
+
+if [[ -e /usr/bin/raspi-config ]]; then
+    PACKAGES="${PACKAGES} libgpiolib-dev"
+fi
 
 while getopts ":vx:" opt
 do
