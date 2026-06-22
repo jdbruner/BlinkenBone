@@ -104,9 +104,13 @@ case ${PIDP_TYPE} in
 esac
 
 SYSCTL_TIOCSTI=dev.tty.legacy_tiocsti
+SYSCTL_DIR=/etc/sysctl.d
+SYSCTL_REALCONS_CONF=${SYSCTL_DIR}/99-realcons.conf
+
 if [ -n "${USE_REALCONS}" -a $(sysctl ${SYSCTL_TIOCSTI} -n) = 0 ]; then
 	echo Settings ${SYSCTL_TIOCSTI}=1 to enable REALCONS injection to the simh console
-	sysctl ${SYSCTL_TIOCSTI}=1
+	echo "${SYSCTL_TIOCSTI} = 1" > ${SYSCTL_REALCONS_CONF}
+	sysctl -p ${SYSCTL_REALCONS_CONF}
 fi
 
 # Create user ("pidp10" or "pidp11") if it does not already exist
