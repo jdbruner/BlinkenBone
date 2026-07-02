@@ -1,7 +1,5 @@
 [Unit]
-Description=PiDP10 simulation
-Wants=pidp10cbridge pidp10tv11
-After=pidp10cbridge pidp10tv11
+Description=PiDP10 simulation (PIPANEL)
 
 [Install]
 WantedBy=multi-user.target

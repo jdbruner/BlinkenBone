@@ -12,7 +12,7 @@ APTDONEFILE="$OBJDIR/.aptdone"
 PIDP_TYPE=11            # default to PiDP11
 VERBOSE=
 
-PACKAGES="build-essential ant default-jdk rpcbind screen \
+PACKAGES="build-essential ed ant default-jdk rpcbind screen \
   libtirpc-dev libsdl2-dev libpcap-dev libreadline-dev \
   libpcre2-dev libedit-dev libpng-dev libvdeplug-dev"
 
@@ -44,7 +44,7 @@ done
 set -e
 
 if [ ! -e $APTDONEFILE ]; then
-    (set -x; sudo apt install $PACKAGES)
+    (set -x; sudo apt-get install $PACKAGES)
     mkdir -p $OBJDIR
     touch $APTDONEFILE
 fi

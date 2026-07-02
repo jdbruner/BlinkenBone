@@ -1,7 +1,7 @@
 [Unit]
-Description=PiDP10 simulation
-Wants=rpcbind.service pidp10panel pidp10cbridge pidp10tv11
-After=rpcbind.service pidp10panel pidp10cbridge pidp10tv11
+Description=PiDP10 simulation (REALCONS panel)
+Wants=rpcbind.service pidp10-server
+After=rpcbind.service pidp10-server
 
 [Install]
 WantedBy=multi-user.target

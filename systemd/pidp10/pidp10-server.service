@@ -1,10 +1,10 @@
 [Unit]
-Description=PiDP10-KA10 panel server
+Description=PiDP10-KA10 REALCONS panel server
 Wants=rpcbind.service
 After=rpcbind.service
 
 [Install]
-WantedBy=pidp10.service
+WantedBy=pidp10-client.service
 WantedBy=multi-user.target
 
 [Service]

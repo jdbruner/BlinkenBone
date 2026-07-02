@@ -1,10 +1,10 @@
 [Unit]
-Description=PiDP11/70 panel server
+Description=PiDP11/70 REALCONS panel server
 Wants=rpcbind.service
 After=rpcbind.service
 
 [Install]
-WantedBy=pidp11.service
+WantedBy=pidp11-client.service
 WantedBy=multi-user.target
 
 [Service]

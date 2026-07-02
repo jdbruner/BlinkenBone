@@ -1,0 +1,12 @@
+# Docker compose file for running Java panel simulator
+# Supplement this with volume mounts for operating system
+services:
+  panelsim:
+    image: pidp${PIDP_TYPE-11}
+    command: ["/usr/bin/screen","-D","-m","-S","console","/opt/pidp${PIDP_TYPE-11}/bin/panelsim.sh"]
+    environment:
+      - DISPLAY=${DISPLAY:?}
+      - XAUTHORITY=/tmp/.Xauthority
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ${XAUTHORITY:?}:/tmp/.Xauthority:ro

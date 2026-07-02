@@ -77,7 +77,7 @@ done
 # defaults per PiDP type (if not defined by an argument above)
 case ${PIDP_TYPE} in
 10)
-	if [ -n "${USE_REALCONS}" ]; then
+	if [[ -n "${USE_REALCONS}" ]]; then
 		: ${REALCONS_PANEL:=PDP10-KA10}
 	else
 		: ${REALCONS_PANEL:=PDP10-KI10}
@@ -93,15 +93,15 @@ case ${PIDP_TYPE} in
 esac
 
 # set parameters based upon type of panel
-if [ -n "${USE_REALCONS}" ] ; then
+if [[ -n "${USE_REALCONS}" ]] ; then
 	# Use REALCONS/BlinkenBone server (assumed to have been started)
 	: ${GETCSW:="getcsw -p${REALCONS_PANEL}"} ${BOOTFILE:=boot.ini}
 	CPU_SUFFIX=_realcons
-elif [ -n "${USE_JAVACONS}" ] ; then
+elif [[ -n "${USE_JAVACONS}" ]] ; then
 	# use Java panel server (assumed to have been started)
 	: ${GETCSW:=scansw00} ${BOOTFILE:=boot.ini}
 	CPU_SUFFIX=_realcons
-elif [ -n "${USE_PIPANEL}" ] ; then
+elif [[ -n "${USE_PIPANEL}" ]] ; then
 	# Use simh with built-in access to PiDP panel via GPIO
 	: ${GETCSW:=scansw10} ${BOOTFILE:=boot.pidp}
 	CPU_SUFFIX=_pipanel
@@ -117,7 +117,7 @@ export REALCONS_PANEL
 PIDP_BIN=${PIDP_DIR}/bin
 PIDP_SYSTEMS=${PIDP_DIR}/systems
 
-if [ -n "${VERBOSE}" ]; then
+if [[ -n "${VERBOSE}" ]]; then
 	for x in PIDP_DIR DEFAULT_CPU CPU_SUFFIX \
 		 BOOTFILE REALCONS_PANEL GETCSW SINGLE_RUN
 	do
@@ -125,13 +125,13 @@ if [ -n "${VERBOSE}" ]; then
 	done
 fi
 
-if [ -n "${USE_REALCONS}" -o -n "${USE_JAVACONS}" ]; then
+if [[ -n "${USE_REALCONS}" || -n "${USE_JAVACONS}" ]]; then
 	# make sure the panel server is ready
 	# give up after waiting half a minute
 	declare -i n=0
 	until rpcinfo -T tcp localhost 99 1 > /dev/null 2>&1 ; do
 		if ((++n == 30)); then
-			if [ -n "${USE_REALCONS}" ]; then
+			if [[ -n "${USE_REALCONS}" ]]; then
 				echo 'PiDP panel server is not running'
 			else
 				echo 'Java panel server is not running'
@@ -145,7 +145,7 @@ fi
 while
 	# select system using low 12 bits of data switches
 	eval declare -A selections=(
-	    $(bash ${PIDP_BIN}/get_selections.sh -c${DEFAULT_CPU} -d -v ${PIDP_SYSTEMS} |
+	    $(bash ${PIDP_BIN}/get_selections.sh -c${DEFAULT_CPU} -d -s -v ${PIDP_SYSTEMS} |
 	    sed -e 's/csw="\([^"]*\)"\(.*\)/[\1]=@\2@/' \
 		-e "s/@/'/g" \
 		-e 's/ \([a-zA-Z]*\)=\([^ 	]*\)/ [\1]=\2/g' ))
@@ -154,10 +154,28 @@ while
 	dir=${sel[dir]-default}
 	cpu=${sel[cpu]-${DEFAULT_CPU}}${CPU_SUFFIX}
 	desc=${sel[desc]:-${dir}}
+	svc=${sel[svc]}
 	echo "*** booting ${desc} ***"
 	# exit the loop on failure (non-zero exit status)
-	(cd ${PIDP_SYSTEMS}/${dir} &&
-	    exec ${PIDP_BIN}/${cpu} -q ${BOOTFILE}) && [ -z "${SINGLE_RUN}" ]
+	(
+		shopt -s extglob
+		if cd ${PIDP_SYSTEMS}/${dir}; then
+			if [[ -n "${svc}" ]]; then
+				# run supporting service(s); kill on exit
+				# they should all be backgrounded (end with &)
+				# but for convenience, this strips any final
+				# & or ; and appends &
+				pgrp=$(setsid bash -c "echo \$\$; (${svc%%[&;]*( )} &) &> /dev/null")
+				${PIDP_BIN}/${cpu} -q ${BOOTFILE}
+				status=$?
+				kill -TERM -${pgrp}
+				exit $status
+			else
+				# no supporting services - just exec simh
+				exec ${PIDP_BIN}/${cpu} -q ${BOOTFILE}
+			fi
+		fi
+	) && [[ -z "${SINGLE_RUN}" ]]
 do
 	:
 done
