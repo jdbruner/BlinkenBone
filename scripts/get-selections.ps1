@@ -50,7 +50,7 @@ $Selections = Get-Item $BaseDirectory/*/pidp_info | ForEach-Object {
         $attributes.cpu = $DefaultCpu
     }
 
-    $attributes.pretty = "$($attributes.csw)`t$(if (""$($attributes.desc)"" -ne '') {$attributes.desc} else { $attributes.dir })"
+    $attributes.pretty = "$($attributes.csw)`t$(if (""$($attributes.desc)"" -ne '') {$attributes.dir + ": " + $attributes.desc} else { $attributes.dir })"
 
     New-Object -TypeName PSObject -Property $attributes
 } | Sort-Object -Property csw
