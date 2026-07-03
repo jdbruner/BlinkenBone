@@ -112,7 +112,7 @@ if [[ -d "${basedir}" ]] ; then
                 if [[ -z "${opt_v}" ]]; then
                     printf '%s\t' ${values[csw]}
                     if [[ -n "${values[desc]}" ]]; then
-                        printf '%s\n' "${values[desc]}"
+                        printf '%s: %s\n' "${values[dir]}" "${values[desc]}"
                     else
                         printf '%s\n' "${values[dir]}"
                     fi
@@ -127,9 +127,9 @@ if [[ -d "${basedir}" ]] ; then
             fi
         fi
     done | sort | {
-	if [[ -z "${opt_v}" ]] ; then
-	    { column -t -s '	' -o '  ' | column ; }
-	else
-	    cat
-	fi }
+        if [[ -z "${opt_v}" ]] ; then
+            { column -t -s '	' -o '  ' | column ; }
+        else
+            cat
+        fi }
 fi
