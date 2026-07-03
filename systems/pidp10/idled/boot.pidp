@@ -9,7 +9,7 @@ echo
 echo
 echo PiDP-10 boot menu - Set SR switches to select O/S
 echo -------------------------------------------------------------------------------
-!/opt/pidp10/bin/get_selections.sh .. | column -t -s '	' -o ' ' | column -c 75
+!/opt/pidp10/bin/get_selections.sh ..
 echo -------------------------------------------------------------------------------
 echo
 echo Now running IDLED
