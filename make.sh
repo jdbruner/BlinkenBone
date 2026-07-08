@@ -12,7 +12,7 @@ APTDONEFILE="$OBJDIR/.aptdone"
 PIDP_TYPE=11            # default to PiDP11
 VERBOSE=
 
-PACKAGES="build-essential ed ant default-jdk rpcbind screen \
+PACKAGES="build-essential ed ant default-jdk net-tools rpcbind screen \
   libtirpc-dev libsdl2-dev libpcap-dev libreadline-dev \
   libpcre2-dev libedit-dev libpng-dev libvdeplug-dev"
 

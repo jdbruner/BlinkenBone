@@ -5,8 +5,8 @@ RUN <<!EOF!
 	DEBIAN_FRONTEND=noninteractive export DEBIAN_FRONTEND
 	apt-get update
 	apt-get -y install --no-install-recommends ca-certificates curl \
-	    libsdl2-2.0 libcap2-bin default-jre procps bsdextrautils \
-	    netbase rpcbind screen
+	    libsdl2-2.0 libcap2-bin libpcap-dev default-jre procps bsdextrautils \
+	    netbase net-tools rpcbind screen
 !EOF!
 
 # Get SIMH source, run make.sh and install.sh for both pidp10 and pidp11
