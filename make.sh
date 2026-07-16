@@ -9,8 +9,8 @@
 
 OBJDIR="../BIN"
 APTDONEFILE="$OBJDIR/.aptdone"
-PIDP_TYPE=11            # default to PiDP11
 VERBOSE=
+declare -A PIDP_TARGETS
 
 PACKAGES="build-essential ed ant default-jdk net-tools rpcbind screen \
   libtirpc-dev libsdl2-dev libpcap-dev libreadline-dev \
@@ -25,11 +25,11 @@ do
     case ${opt} in
     v)  VERBOSE=1 ;;
     x)  case "${OPTARG}" in
-        10|11)  PIDP_TYPE="${OPTARG}" ;;
+        10|11)  PIDP_TARGETS[${OPTARG}]="pidp${OPTARG}" ;;
         *) echo "Unknown PiDP type (-x${OPTARG})" ; exit 1 ;;
         esac ;;
     *)  echo -n "Usage: $0 "
-        echo -n "[-x10 | -x11] "
+        echo -n "[-x10] [-x11] "
         echo -n "[-v] "
         echo
 	echo "-v	Verbose"
@@ -43,12 +43,16 @@ done
 # stop on error
 set -e
 
-if [ ! -e $APTDONEFILE ]; then
+if [[ ! -e $APTDONEFILE ]]; then
     (set -x; sudo apt-get install $PACKAGES)
     mkdir -p $OBJDIR
     touch $APTDONEFILE
 fi
 
-if [ -n "$VERBOSE" ]; then set -x; fi
+if [[ -z "${PIDP_TARGETS[*]}" ]]; then
+    PIDP_TARGETS[11]="pidp11"
+fi
 
-exec make pidp${PIDP_TYPE}
+if [[ -n "$VERBOSE" ]]; then set -x; fi
+
+exec make ${PIDP_TARGETS[*]}
