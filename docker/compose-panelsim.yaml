@@ -1,5 +1,8 @@
 # Docker compose file for running Java panel simulator
 # Supplement this with volume mounts for operating system
+# This assumes the default bridge network, so the boot.ini
+# file should configure the network interface for nat and
+# (if desired) network ports can be exposed here.
 services:
   panelsim:
     image: pidp${PIDP_TYPE-11}

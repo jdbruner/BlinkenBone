@@ -24,13 +24,12 @@ RUN <<!EOF!
 	set -ex
 	git clone --recurse-submodules ${GIT_REPO}
 	cd simh/BlinkenBone
-	./make.sh -v -x10
-	./make.sh -v -x11
-	./install.sh -c -v -x10
-	./install.sh -c -v -x11
+	./make.sh -v -x10 -x11
+	./install.sh -c -v -x10 -e
+	./install.sh -c -v -x11 -e
 !EOF!
 
-# Create image with pdp11 executables
+# Create image with pdp10/pdp11 executables
 FROM simh-common
 ARG PIDP=pidp11
 ENV PIDP_SH=/opt/${PIDP}/bin/pidp.sh

@@ -1,0 +1,69 @@
+# compose file for PIDP10/11 using macvlan networking
+#
+# This must be edited to correspond to the target configuration.
+# Note also that the MAC address of each container *must* be the
+# same as the MAC address used by the simulated machine within it.
+#
+# macvlan depends upon the host interface supporting promiscuous
+# mode. The ethernet device in boot.ini should be attached to the
+# host interface (typically "eth0").
+name: pidp
+
+networks:
+  pidpnet:
+    driver: macvlan
+    driver_opts:
+      parent: eth0
+    ipam:
+      config:
+        - subnet: 192.168.0.0/24
+          ip_range: 192.168.0.224/27
+          gateway: 192.168.0.1
+          aux_addresses:
+            static1: 192.168.0.251
+            static2: 192.168.0.252
+            static3: 192.168.0.253
+            static4: 192.168.0.254
+
+x-service-base: &service-base
+  image: pidp11
+  cap_add: [NET_ADMIN, NET_RAW]
+  security_opt:
+    - apparmor=unconfined
+  networks:
+    - pidpnet
+  sysctls:
+    net.ipv4.ip_forward: 0
+    net.ipv4.conf.all.forwarding: 0
+
+services:
+  rsx11mplus:
+    <<: *service-base
+    volumes:
+      - ${PIDP11SYS:-/opt/pidp11/systems}/rsx11mplus:/opt/pidp11/systems/rsx11mplus
+      - ${PIDP11SYS:-/opt/pidp11/systems}/default-rsx11mplus:/opt/pidp11/systems/default
+    mac_address: aa:00:04:00:59:09      # DECnet 2.345
+    profiles:
+      - pidp11
+      - rsx11mplus
+
+  bsd211:
+    <<: *service-base
+    volumes:
+      - ${PIDP11SYS:-/opt/pidp11/systems}/211bsd:/opt/pidp11/systems/211bsd
+      - ${PIDP11SYS:-/opt/pidp11/systems}/default-211bsd:/opt/pidp11/systems/default
+    mac_address: b8:27:eb:47:39:6f
+    profiles:
+      - pidp11
+      - bsd211
+
+  its:
+    <<: *service-base
+    image: pidp10
+    volumes:
+      - ${PIDP10SYS:-/opt/pidp10/systems}/its:/opt/pidp10/systems/its
+      - ${PIDP10SYS:-/opt/pidp10/systems}/default-its:/opt/pidp10/systems/default
+    mac_address: e2:6c:84:1d:34:a3
+    profiles:
+      - pidp10
+      - its
