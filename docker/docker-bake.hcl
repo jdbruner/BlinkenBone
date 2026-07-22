@@ -6,7 +6,7 @@ target "default" {
   dockerfile = "Dockerfile"
   args = {
     PIDP = pidp
-    GIT_REPO="https://github.com/jdbruner/simh"
+    GIT_REPO="https://github.com/jdbruner/simh.git"
   }
   tags = ["${pidp}"]
 }
