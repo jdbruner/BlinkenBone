@@ -169,6 +169,7 @@ if [[ "${PANEL_KIND}" = realcons && $(sysctl ${SYSCTL_TIOCSTI} -n) = 0 ]]; then
 fi
 
 # Create user ("pidp10" or "pidp11") if it does not already exist
+# Add the ~/.screenrc file if not already present
 # Create ~/bin and populate with the pdp.sh script
 # Edit the PIDP_TYPE in the installed pdp.sh
 # exec pdp.sh as the final action in .profile
@@ -177,6 +178,10 @@ if ! id ${PIDP_USER} > /dev/null 2>&1; then
 elif [[ ! -d ${PIDP_HOME} ]]; then
     echo "User '${PIDP_USER}' exists but home directory '${PIDP_HOME}' does not"
     exit 1
+fi
+
+if [[ ! -r ${PIDP_USER}/.screenrc ]]; then
+    install -m 644 -o ${PIDP_USER} -g ${PIDP_GROUP} ${SRC_SCRIPTS_DIR}/screenrc -t ${PIDP_HOME}
 fi
 
 install -m 755 -o ${PIDP_USER} -g ${PIDP_GROUP} -D ${SRC_SCRIPTS_DIR}/pdp.sh -t ${PIDP_HOME}/bin

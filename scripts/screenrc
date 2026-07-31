@@ -1,0 +1,3 @@
+# fix scrollback
+termcapinfo xterm* ti@:te@
+defscrollback 5000
