@@ -17,6 +17,7 @@ BLAPIX = blinkenlight_api/rpc_blinkenlight_api.x
 # PIPANEL are only meaningful on Raspberry Pi
 SIMHDIR = ..
 PDP11_TARGETS = pdp11 pdp11_realcons
+PDP11PANEL_TARGETS = pdp11_pipanel
 PDP10_TARGETS = pdp10-ka pdp10-ki pdp10-kl pdp10-ks \
 	pdp10-ka_realcons pdp10-ki_realcons pdp10-kl_realcons pdp10-ks_realcons
 PDP10PANEL_TARGETS = pdp10-ka_pipanel pdp10-ki_pipanel \
@@ -39,6 +40,7 @@ GETCSW = $(OBJDIR)/getcsw
 SCANSWDIR = scansw
 SCANSW00 = $(OBJDIR)/scansw00
 SCANSW10 = $(OBJDIR)/scansw10
+SCANSW11 = $(OBJDIR)/scansw11
 
 # Blinkenlight test app
 BLTESTDIR = blinkenlight_test
@@ -50,8 +52,9 @@ PIDP11 = $(PDP11_TARGETS)
 PIDP10 = $(PDP10_TARGETS)
 
 ifneq (,$(wildcard /usr/bin/raspi-config))
-  PIDP11 += $(SERVER11)
+  PIDP11 += $(PDP11PANEL_TARGETS) $(SERVER11) $(SCANSW11)
   PIDP10 += $(PDP10PANEL_TARGETS) $(SERVER10) $(SCANSW10)
+  PDP11_TARGETS += $(PDP11PANEL_TARGETS)
   PDP10_TARGETS += $(PDP10PANEL_TARGETS)
 endif
 
@@ -85,8 +88,8 @@ $(SERVER11) $(SERVER10):	FRC
 	@echo $@ ...
 	$(MAKE) -C $(SERVERDIR)
 
-$(SCANSW00) $(SCANSW10):
-	@echo $@
+$(SCANSW00) $(SCANSW10) $(SCANSW11): FRC
+	@echo $@ ...
 	$(MAKE) -C $(SCANSWDIR)
 
 # this doesn't change often, so only build it if it is missing

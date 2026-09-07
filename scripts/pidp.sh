@@ -18,6 +18,7 @@ GETCSW=
 BOOTFILE=
 CPU_SUFFIX=
 REALCONS_PANEL=
+PIDP_PANEL=
 
 USE_REALCONS=	# default to running with no panel
 USE_PIPANEL=
@@ -97,22 +98,33 @@ if [[ -n "${USE_REALCONS}" ]] ; then
 	# Use REALCONS/BlinkenBone server (assumed to have been started)
 	: ${GETCSW:="getcsw -p${REALCONS_PANEL}"} ${BOOTFILE:=boot.ini}
 	CPU_SUFFIX=_realcons
+	PIDP_PANEL=
 elif [[ -n "${USE_JAVACONS}" ]] ; then
 	# use Java panel server (assumed to have been started)
 	: ${GETCSW:=scansw00} ${BOOTFILE:=boot.ini}
 	CPU_SUFFIX=_realcons
+	PIDP_PANEL=
 elif [[ -n "${USE_PIPANEL}" ]] ; then
 	# Use simh with built-in access to PiDP panel via GPIO
-	: ${GETCSW:=scansw10} ${BOOTFILE:=boot.pidp}
+	case ${PIDP_TYPE} in
+	10)
+		: ${GETCSW:=scansw10} ${BOOTFILE:=boot.pidp}
+		;;
+	11)
+		: ${GETCSW:=scansw11} ${BOOTFILE:=boot.ini}
+		;;
+	esac
 	CPU_SUFFIX=_pipanel
 	REALCONS_PANEL=
+	PIDP_PANEL="pidp${PIDP_TYPE}"
 else
 	# Use simh with no front panel
 	: ${GETCSW:=scansw00} ${BOOTFILE:=boot.ini}
 	CPU_SUFFIX=
 	REALCONS_PANEL=
+	PIDP_PANEL=
 fi
-export REALCONS_PANEL
+export REALCONS_PANEL PIDP_PANEL
 
 PIDP_BIN=${PIDP_DIR}/bin
 PIDP_SYSTEMS=${PIDP_DIR}/systems

@@ -4,7 +4,7 @@
 OBJDIR=../../BIN
 TARGETS = $(OBJDIR)/scansw00
 ifneq (,$(wildcard /usr/bin/raspi-config))
-  TARGETS += $(OBJDIR)/scansw10
+  TARGETS += $(OBJDIR)/scansw10 $(OBJDIR)/scansw11
 endif
 
 all:    $(TARGETS)
@@ -27,8 +27,11 @@ clean:
 install:
 	# no-op for now
 
-$(OBJDIR)/scansw00:	scansw00.o
-	${CC} -o $@ $^ ${LDFLAGS}
+$(OBJDIR)/scansw00:	scansw00.c
+	${CC} ${CFLAGS} -o $@ $^ ${LDFLAGS}
 
-$(OBJDIR)/scansw10:	scansw10.o
-	${CC} -o $@ $^ ${LDFLAGS} ${GPIOLIB}
+$(OBJDIR)/scansw10:	scansw10.c
+	${CC} ${CFLAGS} -o $@ $^ ${LDFLAGS} ${GPIOLIB}
+
+$(OBJDIR)/scansw11:	scansw11.c
+	${CC} ${CFLAGS} -o $@ $^ ${LDFLAGS} ${GPIOLIB}

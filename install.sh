@@ -49,8 +49,8 @@ do
         echo "-e	Directly access Ethernet (vs TUN or NAT)"
         echo "-k	Reverse direction of knobs [PiDP11 only]"
         echo "-n	No panel - no switch/LED interface"
-        echo "-p	PiPanel - use simh-integrated GPIO [PiDP10 only]
-        echo "-r	Use REALCONS
+        echo "-p	PiPanel - use simh-integrated GPIO"
+        echo "-r	Use REALCONS"
         echo "-x10	Install PiDP10"
         echo "-x11	Install PiDP11"
         echo "-v	Verbose"
@@ -66,22 +66,15 @@ fi
 
 # Determine PANEL_KIND (use default value if not specified)
 # Raspberry Pi:
-#   PiDP11: defaults to realcons, pipanel is treated as realcons
 #   PiDP10: all kinds supported, defaults to pipanel
+#   PiDP11: all kinds supported, defaults to realcons
 # Non-Raspberry Pi: always none
-# KNOB_REVERSE only applies to PiDP11 with realcons
 if [[ -z "${IS_RASPI}" ]]; then
     PANEL_KIND=none
-    KNOB_REVERSE=
 elif [[ "${PIDP_TYPE}" = 11 ]]; then
-    case ${PANEL_KIND:=realcons} in
-    none)       KNOB_REVERSE= ;;
-    realcons)   ;;
-    pipanel)    PANEL_KIND=realcons KNOB_REVERSE= ;;
-    esac
+    : ${PANEL_KIND:=realcons}
 else # PiDP10
     : ${PANEL_KIND:=pipanel}
-    KNOB_REVERSE=
 fi
 
 PIDP=pidp${PIDP_TYPE}
@@ -134,18 +127,30 @@ case ${PIDP_TYPE} in
     esac
     ;;
 11)
-    PIDP_SIMS="pdp11 pdp11_realcons"
-    PIDP_PIPANEL_SIMS=
-    PIDP_EXES="${PIDP_SIMS} getcsw scansw00"
-    if [[ ${PANEL_KIND} = realcons ]]; then
-        PIDP_SERVERS="server11"
-        PIDP_INSTALL_SERVICES="pidp11-server pidp11-client"
-        PIDP_ENABLE_SERVICES="rpcbind ${PIDP_INSTALL_SERVICES}"
-    else
+    case ${PANEL_KIND} in
+    none)
+        PIDP_SIMS="pdp11 pdp11_realcons"
+        PIDP_EXES="${PIDP_SIMS} scansw00 getcsw"
         PIDP_SERVERS=""
         PIDP_INSTALL_SERVICES="pidp11"
         PIDP_ENABLE_SERVICES="${PIDP_INSTALL_SERVICES}"
-    fi
+        ;;
+    realcons)
+        PIDP_SIMS="pdp11 pdp11_realcons"
+        PIDP_EXES="${PIDP_SIMS} scansw00 getcsw"
+        PIDP_SERVERS="server11"
+        PIDP_INSTALL_SERVICES="pidp11-server pidp11-client"
+        PIDP_ENABLE_SERVICES="rpcbind ${PIDP_INSTALL_SERVICES}"
+        ;;
+    pipanel)
+        # PIPANEL
+        PIDP_SIMS="pdp11 pdp11_realcons pdp11_pipanel"
+        PIDP_EXES="${PIDP_SIMS} scansw00 scansw11 getcsw"
+        PIDP_SERVERS=""
+        PIDP_INSTALL_SERVICES="pidp11-pipanel"
+        PIDP_ENABLE_SERVICES="${PIDP_INSTALL_SERVICES}"
+        ;;
+    esac
     ;;
 esac
 if [[ -n "${IS_CONTAINER}" ]]; then
@@ -222,6 +227,7 @@ fi
 #
 if [[ ! -d ${PIDP_OPT_SYSTEMS} ]]; then
     install -m 644 -D ${SRC_SYSTEMS_DIR}/realcons.ini -t ${PIDP_OPT_SYSTEMS}
+    install -m 644 -D ${SRC_SYSTEMS_DIR}/pipanel.ini -t ${PIDP_OPT_SYSTEMS}
     cp -r ${SRC_PIDP_SYSTEMS_DIR}/* ${PIDP_OPT_SYSTEMS}
     if [[ -n "${IS_CONTAINER}" ]]; then
         echo idled > ${PIDP_OPT_SYSTEMS}/default
@@ -246,17 +252,25 @@ elif [[ -n "${IS_CONTAINER}" ]]; then
 fi
 
 # Install the systemd service files
-# If KNOB_REVERSE is non-empty, invoke server11 with the -r flag
 for svc in ${PIDP_INSTALL_SERVICES}; do
     install -m 644 -D ${SRC_PIDP_SYSTEMD_DIR}/${svc}.service -t ${SYSTEMD_LOCAL_SYSTEM}
 done
 
-if [[ -n "${KNOB_REVERSE}" ]]; then
-    ed ${SYSTEMD_LOCAL_SYSTEM}/pidp11panel.service <<"!EOF!" >& /dev/null
-        /^ExecStart/s/server11/& -r/
-        w
-        q
-!EOF!
+# If KNOB_REVERSE is non-empty on PiDP11, then
+#   for realcons invoke server11 with the -r flag
+#   for pipanel set the PIDP_11_ROTATION environment variable to FLIP
+if [[ -n "${KNOB_REVERSE}" && "${PIDP_TYPE}" == "11" ]]; then
+    case ${PANEL_KIND} in
+    none)   ;;
+    realcons)
+        printf "/^ExecStart/s/server11/& -r/\nw\nq\n" |
+            ed ${SYSTEMD_LOCAL_SYSTEM}/pidp11-server.service >& /dev/null
+        ;;
+    pipanel)
+        printf "/^ExecStart/i\nEnvironment=PIDP_11_ROTATION=FLIP\n.\nw\nq\n" |
+            ed ${SYSTEMD_LOCAL_SYSTEM}/pidp11-pipanel.service >& /dev/null
+        ;;
+    esac
 fi
 
 # Finally, enable and start the services (if any)

@@ -24,7 +24,7 @@ main(int argc, const char *const *argv)
     char format[16];
     uint64_t bitmask = (1uL << 36) - 1;
     uint64_t result = 0; // default value
-	
+
     while (1) {
         /* parse arguments */
         int c = getopt(argc, (char **)argv, "0d::o::x::n:v:?");

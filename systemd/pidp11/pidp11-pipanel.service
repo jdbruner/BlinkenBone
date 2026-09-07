@@ -1,0 +1,14 @@
+[Unit]
+Description=PiDP11/70 simulation (PIPANEL)
+
+[Install]
+WantedBy=multi-user.target
+
+[Service]
+Type=simple
+ExecStart=screen -D -m -S pidp11 /opt/pidp11/bin/pidp.sh -x11 -p
+WorkingDirectory=/opt/pidp11
+User=pidp11
+Group=pidp11
+SupplementaryGroups=gpio
+LimitRTPRIO=99:99

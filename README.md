@@ -24,6 +24,8 @@ The PiDP10 and PIDP11 servers are accompanied by associated control files
 and support installation on the current (build) machine.
 A PiDP8 server is also built, but to date it is untested.
 
+This repository also includes tools and scripts that support PiDP10 and PiDP11 clients with integrated GPIO support (on Raspberry Pi only).
+
 This is derived from
 (and significantly modified from)
 ``https://github.com/j-hoppe/BlinkenBone``.
@@ -71,6 +73,8 @@ consult the following:
   (similar to the output of ``getcsw``).
   This directory builds two targets:
   - ``scansw10`` - for PiDP10 (Raspberry Pi only)
+  - ``scansw11`` - for PiDP11 (Raspberry Pi only)
+  
   - ``scansw00`` - gets the switch value from a command-line argument.
     This can be used in place of ``scansw10`` (or ``getcsw``)
     to emulate a specified switch value.
@@ -100,7 +104,7 @@ consult the following:
   - ``server11`` - 11/70 panel for PiDP-11
 - ``systemd`` - service files for systemd:
   - ``systemd/pidp10`` - service files for REALCONS and PIPANEL PiDP10
-  - ``systemd/pidp11`` - service files for REALCONS PiDP11
+  - ``systemd/pidp11`` - service files for REALCONS and PIPANEL PiDP11
 - ``systems`` - operating system skeleton directory:
   - ``systems/pidp10`` - idle LEDs standalone programs for PiDP10
   - ``systems/pidp11`` - idle LEDs standalone programs for PiDP11
