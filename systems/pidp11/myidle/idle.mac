@@ -82,11 +82,10 @@ INIT:	MOV	(R1), R4	; current value of switch register
 	MOV	TABLE(R3), R3
 	MOV	(R3)+, R0	; initialize pattern
 	MOV	(R3)+, R5	; initialize pattern-specific secondary register
-NEXT:	MOV	R4, R2		; set count to low 6 bits of switch register + 1
+NEXT:	MOV	R4, R2		; set count to <low 6 bits of switch register+1>*2
 	BIC	#^C 77, R2
-	BNE	1$		; treat ^B000 as ^B001
 	INC	R2
-1$:	INC	R2
+	ASL	R2
 	JMP	(R3)		; pattern update
 
 TABLE:	.WORD	PAT00
@@ -95,19 +94,27 @@ TABLE:	.WORD	PAT00
 	.WORD	PAT03
 ENDTBL:
 
+; simple rotate left
 PAT00:	.WORD	177400
 	.WORD	0
 	ASL	R0		; shift left
 	ADC	R0		; end-around carry
 	BR	RETURN
 
-PAT01:	.WORD	177400
+; Stanford (PDP-10) idle pattern
+PAT01:	.WORD	0
 	.WORD	0
+	MOV	R0, R5		; get the complement of the 40000 bit
+	COM	R5
+	BIC	#^C 40000, R5
+	ASL	R5		; XOR it into the high-order bit
+	XOR	R5, R0
 	MOV	R0, R5		; get LSB into carry
 	ASR	R5
 	ROR	R0		; rotate right, end-around carry
 	BR	RETURN
 
+; RSX-11M idle pattern
 PAT02:	.WORD	170017
 	.WORD	0
 	MOV	R0,-(SP)
@@ -117,6 +124,7 @@ PAT02:	.WORD	170017
 	MOV	(SP)+,R0
 	BR	RETURN
 
+; bounce back and forth
 PAT03:	.WORD	1
 	.WORD	1
 	ASH	R5, R0		; shift left (1) or right (-1)
